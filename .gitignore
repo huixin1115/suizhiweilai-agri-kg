@@ -1,0 +1,38 @@
+# ============================================================
+#  穗知未来 —— 版本控制忽略清单
+# ============================================================
+
+# ---- 私有配置：含 API Key，绝不入库 ----
+# 需要配置时把 code/config_local.example.py 复制成 code/config_local.py
+code/config_local.py
+.env
+.env.local
+
+# ---- 模型权重：体积过大，按 README 说明自行下载 ----
+# bge-small-zh-v1.5（约 367MB）、Qwen3.5-0.5B-Chat（已弃用）
+code/models/
+
+# ---- 原始素材：仅保留处理后的物候期图 static/stages/ ----
+code/static/stage_raw/
+
+# ---- 运行产物：向量缓存、sqlite 库、日志都会自动重建 ----
+code/output/*.npz
+code/output/*.sqlite3
+code/output/*.db
+code/output/*.bak-*
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ---- 免安装运行时（另单独分发）----
+runtime/
+
+# ---- 日志与临时文件 ----
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

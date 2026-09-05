@@ -1,0 +1,53 @@
+# ===================== 私密配置：绝不提交 =====================
+# 含 API Key / 数据库密码等，一旦推上去就等于公开泄露
+# 注意用 config_local.* 而不是 config_local.py：
+# 之前就有一个 config_local.py.bak-key 带着真实 Key 混过了检查
+config_local.*
+!config_local.example.py
+config.py.bak*
+*.key
+.env
+.env.*
+
+# 备份文件一律不入库（.bak 里往往留着旧密钥和废弃逻辑）
+*.bak
+*.bak-*
+*.orig
+
+# ===================== Python =====================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ===================== 运行产物 =====================
+# 只忽略运行生成的东西（向量缓存/日志/数据库），
+# 图谱重建要用的清洗结果 CSV 必须留在仓库里
+output/*
+!output/clean_triplets.csv
+!output/clean_triplets_merged.csv
+!output/entity_props.csv
+!output/entity_relation_def.xlsx
+!output/clean_agri_data.txt
+*.log
+_t*.json
+_spack.json
+
+# 用户上传的识病照片：属运行产物，且含用户个人信息，不入公开仓库
+static/uploads/
+
+# ===================== 编辑器 / 系统 =====================
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ===================== 已下线/废弃的文件 =====================
+_removed/
+
+# ===================== 体积较大的素材（按需取舍） =====================
+# static/stage_raw/    # 生育期图的原始 PNG，约 400MB；只保留 static/stages/ 的成品即可
+# models/              # 本地小模型权重，体积大；建议单独分发
