@@ -1,0 +1,131 @@
+{
+  "_note": "农作物经济效益参考价库。价格与成本均为【参考值，非实时行情】，用于给农户一个可编辑的起点，不构成投资建议。亩产优先取知识图谱的『平均亩产kg』，此处仅作缺失时的兜底。",
+  "_updated": "2026-09",
+  "_price_unit": "元/公斤（鲜重或干重，见 sales_notes）",
+  "_cost_unit": "元/亩（一个生产季）",
+  "_rent_note": "成本模板默认【不计地租】，即『自家地自种』口径。租地经营请点页面上的『租地规模经营』，会按 rent_hint 自动填入当地参考租金。",
+
+  "cost_labels": {
+    "seed": "种子种苗",
+    "fertilizer": "化肥",
+    "pesticide": "农药",
+    "film": "农膜设施",
+    "irrigation": "灌溉水电",
+    "machine": "机械作业",
+    "labor": "人工",
+    "rent": "土地租金",
+    "other": "其他"
+  },
+
+  "cost_templates": {
+    "粮食作物": {"seed": 70, "fertilizer": 170, "pesticide": 60, "film": 0,  "irrigation": 70,  "machine": 170, "labor": 180,  "rent": 0, "other": 50},
+    "油料作物": {"seed": 60, "fertilizer": 150, "pesticide": 60, "film": 20, "irrigation": 60,  "machine": 150, "labor": 170,  "rent": 0, "other": 50},
+    "薯类作物": {"seed": 300,"fertilizer": 200, "pesticide": 80, "film": 100,"irrigation": 60,  "machine": 150, "labor": 400,  "rent": 0, "other": 60},
+    "蔬菜":     {"seed": 250,"fertilizer": 300, "pesticide": 200,"film": 150,"irrigation": 100, "machine": 80,  "labor": 800,  "rent": 0, "other": 100},
+    "果树":     {"seed": 300,"fertilizer": 500, "pesticide": 350,"film": 60, "irrigation": 150, "machine": 120, "labor": 900,  "rent": 0, "other": 150},
+    "经济作物": {"seed": 150,"fertilizer": 220, "pesticide": 120,"film": 80, "irrigation": 90,  "machine": 150, "labor": 500,  "rent": 0, "other": 80},
+    "药材":     {"seed": 600,"fertilizer": 350, "pesticide": 150,"film": 300,"irrigation": 120, "machine": 100, "labor": 1200, "rent": 0, "other": 200}
+  },
+
+  "rent_hint": {
+    "粮食作物": 600,
+    "油料作物": 600,
+    "薯类作物": 600,
+    "蔬菜": 800,
+    "果树": 700,
+    "经济作物": 650,
+    "药材": 700
+  },
+
+  "crops": {
+    "水稻":   {"price": 2.60, "type": "粮食作物", "yield_kg": 550},
+    "小麦":   {"price": 2.40, "type": "粮食作物", "yield_kg": 420},
+    "玉米":   {"price": 2.30, "type": "粮食作物", "yield_kg": 520},
+    "大豆":   {"price": 4.60, "type": "粮食作物", "yield_kg": 200},
+    "大麦":   {"price": 2.00, "type": "粮食作物", "yield_kg": 330},
+    "高粱":   {"price": 2.60, "type": "粮食作物", "yield_kg": 400},
+    "谷子":   {"price": 3.80, "type": "粮食作物", "yield_kg": 280},
+    "燕麦":   {"price": 2.80, "type": "粮食作物", "yield_kg": 250},
+    "荞麦":   {"price": 4.20, "type": "粮食作物", "yield_kg": 150},
+    "苦荞":   {"price": 4.60, "type": "粮食作物", "yield_kg": 150},
+    "甜荞":   {"price": 3.60, "type": "粮食作物", "yield_kg": 160},
+    "青稞":   {"price": 3.00, "type": "粮食作物", "yield_kg": 260},
+    "黑麦":   {"price": 2.60, "type": "粮食作物", "yield_kg": 300},
+    "莜麦":   {"price": 3.20, "type": "粮食作物", "yield_kg": 200},
+    "紫米":   {"price": 6.00, "type": "粮食作物", "yield_kg": 450},
+
+    "油菜":   {"price": 5.60, "type": "油料作物", "yield_kg": 160},
+    "花生":   {"price": 7.00, "type": "油料作物", "yield_kg": 280},
+    "芝麻":   {"price": 12.00,"type": "油料作物", "yield_kg": 90},
+    "向日葵": {"price": 6.00, "type": "油料作物", "yield_kg": 220},
+    "亚麻":   {"price": 5.50, "type": "油料作物", "yield_kg": 180},
+
+    "马铃薯": {"price": 1.60, "type": "薯类作物", "yield_kg": 1800},
+    "甘薯":   {"price": 1.40, "type": "薯类作物", "yield_kg": 2000},
+    "红薯":   {"price": 1.40, "type": "薯类作物", "yield_kg": 2000},
+    "紫薯":   {"price": 2.40, "type": "薯类作物", "yield_kg": 1700},
+    "凉薯":   {"price": 1.60, "type": "薯类作物", "yield_kg": 2500},
+    "木薯":   {"price": 1.00, "type": "薯类作物", "yield_kg": 2200},
+
+    "大白菜": {"price": 0.80, "type": "蔬菜", "yield_kg": 6000},
+    "白菜":   {"price": 0.90, "type": "蔬菜", "yield_kg": 4500},
+    "萝卜":   {"price": 1.00, "type": "蔬菜", "yield_kg": 4500},
+    "胡萝卜": {"price": 1.60, "type": "蔬菜", "yield_kg": 3500},
+    "菠菜":   {"price": 3.00, "type": "蔬菜", "yield_kg": 2000},
+    "芹菜":   {"price": 2.60, "type": "蔬菜", "yield_kg": 4000},
+    "大葱":   {"price": 2.20, "type": "蔬菜", "yield_kg": 4000},
+    "大蒜":   {"price": 6.00, "type": "蔬菜", "yield_kg": 1500},
+    "生姜":   {"price": 7.00, "type": "蔬菜", "yield_kg": 2500},
+    "南瓜":   {"price": 1.60, "type": "蔬菜", "yield_kg": 3000},
+    "西兰花": {"price": 4.50, "type": "蔬菜", "yield_kg": 1800},
+    "甜瓜":   {"price": 3.50, "type": "蔬菜", "yield_kg": 2500},
+    "西瓜":   {"price": 1.80, "type": "蔬菜", "yield_kg": 3500},
+
+    "番茄":   {"price": 3.20, "type": "蔬菜", "yield_kg": 5500,
+               "cost": {"seed": 400, "fertilizer": 500, "pesticide": 400, "film": 800, "irrigation": 200, "machine": 120, "labor": 2500, "other": 300}},
+    "黄瓜":   {"price": 3.00, "type": "蔬菜", "yield_kg": 5000,
+               "cost": {"seed": 380, "fertilizer": 480, "pesticide": 380, "film": 800, "irrigation": 200, "machine": 120, "labor": 2400, "other": 300}},
+    "辣椒":   {"price": 4.50, "type": "蔬菜", "yield_kg": 2500,
+               "cost": {"seed": 200, "fertilizer": 350, "pesticide": 250, "film": 250, "labor": 1200}},
+    "茄子":   {"price": 3.00, "type": "蔬菜", "yield_kg": 4000,
+               "cost": {"seed": 200, "fertilizer": 350, "pesticide": 250, "film": 250, "labor": 1100}},
+
+    "苹果":   {"price": 4.50, "type": "果树", "yield_kg": 2500,
+               "cost": {"fertilizer": 600, "pesticide": 450, "labor": 1800}},
+    "梨":     {"price": 3.20, "type": "果树", "yield_kg": 2200},
+    "桃":     {"price": 4.00, "type": "果树", "yield_kg": 2000, "cost": {"labor": 1100}},
+    "柑橘":   {"price": 3.00, "type": "果树", "yield_kg": 2200},
+    "葡萄":   {"price": 6.00, "type": "果树", "yield_kg": 1800, "cost": {"seed": 500, "labor": 1400, "film": 200}},
+    "草莓":   {"price": 12.00,"type": "果树", "yield_kg": 2000,
+               "cost": {"seed": 800, "fertilizer": 400, "pesticide": 300, "film": 500, "irrigation": 120, "machine": 80, "labor": 2200, "other": 200}},
+    "猕猴桃": {"price": 6.00, "type": "果树", "yield_kg": 1500},
+    "荔枝":   {"price": 8.00, "type": "果树", "yield_kg": 900},
+    "芒果":   {"price": 5.00, "type": "果树", "yield_kg": 1500},
+    "香蕉":   {"price": 2.60, "type": "果树", "yield_kg": 2800},
+
+    "棉花":   {"price": 7.50, "type": "经济作物", "yield_kg": 260, "cost": {"seed": 70, "pesticide": 200, "labor": 600}},
+    "甘蔗":   {"price": 0.50, "type": "经济作物", "yield_kg": 5500, "cost": {"seed": 400, "labor": 600}},
+    "甜菜":   {"price": 0.55, "type": "经济作物", "yield_kg": 3500},
+    "烟草":   {"price": 14.00,"type": "经济作物", "yield_kg": 150, "cost": {"seed": 120, "fertilizer": 350, "labor": 900}},
+    "桑树":   {"price": 2.00, "type": "经济作物", "yield_kg": 1800, "cost": {"labor": 1100}},
+    "茶树":   {"price": 30.00,"type": "经济作物", "yield_kg": 120, "cost": {"seed": 900, "fertilizer": 450, "labor": 1600}},
+    "茶叶":   {"price": 30.00,"type": "经济作物", "yield_kg": 120, "cost": {"seed": 900, "fertilizer": 450, "labor": 1600}},
+
+    "三七":   {"price": 160.00,"type": "药材", "yield_kg": 150, "cost": {"seed": 1500, "labor": 2500, "rent": 0}},
+    "人参":   {"price": 200.00,"type": "药材", "yield_kg": 180, "cost": {"seed": 1800, "labor": 2500, "rent": 0}},
+    "枸杞":   {"price": 30.00, "type": "药材", "yield_kg": 220, "cost": {"labor": 1500}}
+  },
+
+  "sales_notes": {
+    "棉花": "按籽棉收购价计；若卖皮棉，单价另计",
+    "茶树": "按鲜叶收购价计",
+    "茶叶": "按鲜叶收购价计",
+    "甘蔗": "按糖料蔗到厂价计（约 500 元/吨）",
+    "甜菜": "按到厂价计（约 550 元/吨）",
+    "三七": "按干品统货计；三年生，收益需按周期摊算",
+    "人参": "按园参计；四年生左右，收益需按周期摊算",
+    "枸杞": "按干果计",
+    "桑树": "按桑叶/枝条计，养蚕收益另算",
+    "烟草": "按上等烟叶收购价计，实际按等级分档"
+  }
+}
