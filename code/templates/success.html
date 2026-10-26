@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作台 · 穗知未来</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --blue: #2F5597;
+            --blue-dark: #24406f;
+            --green: #3f7d5f;
+            --ink: #1f2937;
+            --ink-2: #4b5563;
+            --ink-3: #94a3b8;
+            --line: #e6ebf2;
+        }
+        /* ---------------- 页面底图 ----------------
+           底图 = 真实航拍茶山（static/img/field_bg.jpg）。
+           来源：Pexels（免费可商用，无需署名）· 作者 Quang Nguyen Vinh
+                https://www.pexels.com/photo/11669960/
+           ⚠ 换图时把下面的 ?v= 一起改，否则浏览器会继续用缓存里的旧图。
+           图放在 html 上并 fixed：滚动时不动，只当背景肌理。
+           body 上盖一层**加深**用的暗色蒙版 —— 底图偏亮，压深一点绿色才出得来；
+           文字与卡片都压在这层蒙版之上，所以下面用白色标题 + 阴影保证可读。
+           想换图：直接替换 static/img/field_bg.jpg（比例 16:9 或 3:2 最佳）。 */
+        html {
+            background: #dfe8f1 url("{{ url_for('static', filename='img/field_bg.jpg') }}?v=real1")
+                        center top / cover no-repeat fixed;
+        }
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, sans-serif;
+            color: var(--ink);
+            /* 蒙版透明度调低（= 颜色更实），底图整体再压深一档 */
+            background: linear-gradient(180deg,
+                rgba(11, 29, 22, .42) 0%,
+                rgba(11, 29, 22, .43) 42%,
+                rgba(11, 29, 22, .48) 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            padding: 26px 20px 40px;
+            -webkit-font-smoothing: antialiased;
+        }
+        /* 压在照片上的文字统一带淡阴影，明暗区都看得清 */
+        .section-head h2,
+        .section-head span {
+            text-shadow: 0 1px 3px rgba(8, 22, 16, .55);
+        }
+        .foot { text-shadow: 0 1px 2px rgba(6, 18, 12, .9), 0 0 9px rgba(6, 18, 12, .55); }
+        /* 首页没有侧栏，整幅居中；卡片网格 3 列刚好排满 */
+        .page { max-width: 1180px; margin: 0 auto; }
+
+        /* ---------------- 顶部欢迎区 ---------------- */
+        .hero {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(105deg, #2F5597 0%, #37699b 45%, #3f7d5f 100%);
+            border-radius: 16px;
+            padding: 26px 30px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            box-shadow: 0 10px 26px rgba(47, 85, 151, .18);
+        }
+        .hero::after {
+            content: "";
+            position: absolute;
+            right: -70px; top: -90px;
+            width: 260px; height: 260px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .07);
+        }
+        .hero::before {
+            content: "";
+            position: absolute;
+            right: 90px; bottom: -110px;
+            width: 190px; height: 190px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .05);
+        }
+        .hero-main { flex: 1; min-width: 240px; position: relative; z-index: 1; }
+        .hero-kicker {
+            font-size: 12.5px;
+            letter-spacing: 2px;
+            opacity: .8;
+            margin-bottom: 8px;
+        }
+        .hero-hello { font-size: 25px; font-weight: 600; letter-spacing: .5px; }
+        .hero-hello b { font-weight: 600; }
+        .hero-sub { font-size: 13px; opacity: .82; margin-top: 9px; line-height: 1.7; }
+        .hero-actions { position: relative; z-index: 1; display: flex; gap: 10px; align-items: center; }
+        .hero-date { font-size: 13px; color: rgba(255, 255, 255, .86); letter-spacing: .3px; }
+        /* 首页不显示侧栏，退出登录挪到欢迎区（否则没有出口） */
+        .hero-out {
+            font-size: 12.5px;
+            color: #fff;
+            text-decoration: none;
+            border: 1px solid rgba(255, 255, 255, .5);
+            padding: 4px 12px;
+            border-radius: 7px;
+            white-space: nowrap;
+            transition: background .16s;
+        }
+        .hero-out:hover { background: rgba(255, 255, 255, .16); }
+
+        /* ---------------- 管理端横幅（与功能卡片同一套毛玻璃语言） ---------------- */
+        .adminbar {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            flex-wrap: wrap;
+            background: rgba(255, 255, 255, .42);
+            -webkit-backdrop-filter: blur(14px) saturate(150%);
+            backdrop-filter: blur(14px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, .46);
+            border-left: 3px solid var(--blue);
+            border-radius: 12px;
+            padding: 12px 17px;
+            margin-top: 16px;
+            box-shadow: 0 6px 18px rgba(10, 26, 20, .13);
+        }
+        .ab-tag {
+            font-size: 11px;
+            border-radius: 5px;
+            padding: 2px 8px;
+            background: rgba(47, 85, 151, .12);
+            color: var(--blue);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .ab-txt { font-size: 12.5px; color: var(--ink-2); }
+        .adminbar a {
+            margin-left: auto;
+            font-size: 12.5px;
+            color: var(--blue);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .adminbar a:hover { text-decoration: underline; }
+        @media (max-width: 720px) { .adminbar a { margin-left: 0; } }
+
+        /* ---------------- 功能卡片 ---------------- */
+        .section-head {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin: 26px 0 13px;
+        }
+        .section-head h2 { font-size: 15px; font-weight: 600; color: #fff; }
+        .section-head span { font-size: 12.5px; color: rgba(255, 255, 255, .82); }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+            gap: 13px;
+        }
+        .card {
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            /* 毛玻璃：半透明白 + 背景模糊，底图从卡片后面透出来但字仍然清楚。
+               卡面越透，模糊半径就越要跟上 —— 背景糊得越匀，字越不容易被纹理切碎。 */
+            background: rgba(255, 255, 255, .38);
+            -webkit-backdrop-filter: blur(16px) saturate(150%);
+            backdrop-filter: blur(16px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, .46);
+            border-radius: 13px;
+            padding: 17px 18px;
+            text-decoration: none;
+            color: inherit;
+            box-shadow: 0 6px 18px rgba(10, 26, 20, .12);
+            transition: transform .16s ease, box-shadow .16s ease,
+                        background .16s ease, border-color .16s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, .58);
+            border-color: rgba(255, 255, 255, .75);
+            box-shadow: 0 10px 26px rgba(10, 26, 20, .20);
+        }
+        .card:active { transform: translateY(0); }
+        .ico {
+            width: 44px; height: 44px;
+            flex: none;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .ico svg { width: 22px; height: 22px; }
+        .card-body { flex: 1; min-width: 0; }
+        .card-body h3 {
+            font-size: 15px; font-weight: 600; margin-bottom: 6px;
+            display: flex; align-items: center; gap: 7px;
+        }
+        .card-body p { font-size: 13px; color: #333f4c; line-height: 1.7; }
+        /* 卡面很透时给深色文字加一圈淡白晕，避免被底下的山脊/茶垄纹理切碎 */
+        .card-body h3,
+        .card-body p { text-shadow: 0 1px 2px rgba(255, 255, 255, .78); }
+        .badge {
+            font-size: 10.5px; font-weight: 400;
+            color: #fff; background: var(--green);
+            border-radius: 4px; padding: 1px 6px;
+        }
+        .card-arrow {
+            align-self: center;
+            color: rgba(255, 255, 255, .92);
+            text-shadow: 0 1px 2px rgba(10, 26, 20, .45);
+            font-size: 17px;
+            transition: color .16s, transform .16s;
+        }
+        .card:hover .card-arrow { color: #fff; transform: translateX(2px); }
+
+        .c-todo    .ico { background: #d7e9ef; } .c-todo    .ico svg { stroke: #1f6d80; }
+        .c-photo   .ico { background: #fbdccf; } .c-photo   .ico svg { stroke: #c44f26; }
+        .c-season  .ico { background: #cfe9da; } .c-season  .ico svg { stroke: #2b6f4d; }
+        .c-advisor .ico { background: #d8e2f4; } .c-advisor .ico svg { stroke: #2F5597; }
+        .c-pest    .ico { background: #fbdccf; } .c-pest    .ico svg { stroke: #c44f26; }
+        .c-fert    .ico { background: #d8e2f4; } .c-fert    .ico svg { stroke: #2F5597; }
+        .c-farm    .ico { background: #cfe9da; } .c-farm    .ico svg { stroke: #2b6f4d; }
+        .c-plan    .ico { background: #fbe8cc; } .c-plan    .ico svg { stroke: #96631a; }
+        .c-qa      .ico { background: #d3e6f8; } .c-qa      .ico svg { stroke: #14568f; }
+        .c-classic .ico { background: #e2e6ec; } .c-classic .ico svg { stroke: #55606e; }
+        /* 管理端专属的两张卡（历史记录 / 用户端管理） */
+        .c-history .ico { background: #e4e7f2; } .c-history .ico svg { stroke: #4a5a86; }
+        .c-admin   .ico { background: #dbe6f6; } .c-admin   .ico svg { stroke: #2F5597; }
+        /* 经济效益测算（用户端） */
+        .c-econ    .ico { background: #e8f5ee; } .c-econ    .ico svg { stroke: #2b6f4d; }
+
+        /* ---------------- 页脚 ---------------- */
+        /* 压在半透明底图上，用白色 + 阴影，避免任何明暗区都读不清 */
+        .foot {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, .30);
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            font-size: 12px;
+            color: rgba(255, 255, 255, .94);
+            line-height: 1.8;
+        }
+        .foot b { color: #fff; font-weight: 500; }
+    </style>
+</head>
+<body>
+    {% include '_nav.html' %}
+    {# 管理端：首页只陈列四个功能（今日待办 / 物候期提醒 / 历史记录 / 用户端管理），
+       与左侧菜单保持一致；用户端仍是完整的九张卡片。 #}
+    {% set _admin = session.get('role') == 'admin' %}
+    <div class="page">
+        <!-- 欢迎区 -->
+        <header class="hero">
+            <div class="hero-main">
+                <div class="hero-kicker">穗知未来——农业知识图谱智能决策服务系统</div>
+                <div class="hero-hello">欢迎回来，<b>{{ username }}</b></div>
+                <div class="hero-sub">
+                    {% if _admin %}照看名下用户端的农事与提问，管理它们的账号、可种作物与土质{% else %}拍照识病、物候期提醒、防治建议、水肥处方、生产规划 —— 一个问题，一份能落地的方案{% endif %}
+                </div>
+            </div>
+            <div class="hero-actions">
+                <span class="hero-date" id="heroDate"></span>
+                <a class="hero-out" href="{{ url_for('logout') }}">退出登录</a>
+            </div>
+        </header>
+
+        {# 管理端横幅：只在管理端账号出现，兼作入口（首页本身没有侧栏） #}
+        {% if _admin %}
+        <section class="adminbar">
+            <span class="ab-tag">管理端</span>
+            <span class="ab-txt">你可以添加用户端账号，并指定每个账号能种哪些作物、能用哪些土质</span>
+            <a href="{{ url_for('admin_page') }}">用户端管理 &rsaquo;</a>
+        </section>
+        {% endif %}
+
+        <!-- 功能入口 -->
+        <div class="section-head">
+            <h2>功能入口</h2>
+            <span>点击卡片进入</span>
+        </div>
+
+        <section class="grid">
+            <a class="card c-todo" href="{{ url_for('todo_page') }}">
+                <div class="ico">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 7.4l1.7 1.7L9.4 5.4"/>
+                        <path d="M4 15.6l1.7 1.7 3.7-3.7"/>
+                        <path d="M12.6 7.4H20M12.6 15.6H20"/>
+                    </svg>
+                </div>
+                <div class="card-body">
+                    <h3>今日待办 <span class="badge">推荐</span></h3>
+                    <p>各块地的当日提醒按紧迫度分组，有风险的靠前，点开就知道该干什么</p>
+                </div>
+                <div class="card-arrow">&rsaquo;</div>
+            </a>
+
+            {% if not _admin %}
+            <a class="card c-photo" href="{{ url_for('diagnose_page') }}">
+                <div class="ico">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.2-2h5l1.2 2h1.8A2.5 2.5 0 0 1 19 8.5v8A2.5 2.5 0 0 1 16.5 19h-11A2.5 2.5 0 0 1 3 16.5z"/>
+                        <circle cx="11" cy="12.2" r="3.3"/>
+                    </svg>
+                </div>
+                <div class="card-body">
+                    <h3>拍照识病 <span class="badge">推荐</span></h3>
+                    <p>拍一张作物照片，自动识别病虫害，并对齐知识图谱给出防治方案</p>
+                </div>
+                <div class="card-arrow">&rsaquo;</div>
+            </a>
+            {% endif %}
+
+            <a class="card c-season" href="{{ url_for('phenology_page') }}">
+                <div class="ico">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/>
+                        <path d="M3.5 9.8h17M8 3.5v3.2M16 3.5v3.2"/>
+                        <path d="M8.6 14.2l2 2 3.8-3.8"/>
+                    </svg>
+                </div>
+                <div class="card-body">
+                    <h3>物候期提醒 <span class="badge">推荐</span></h3>
+                    <p>填一次播种日期与土质，之后每天自动告诉你"今天该干什么、要防什么"</p>
+                </div>
+                <div class="card-arrow">&rsaquo;</div>
+            </a>
+
+            {# 管理端：历史记录可以看到名下每个用户端问过什么 #}
+            {% if _admin %}
+            <a class="card c-history" href="{{ url_for('history_page') }}">
+                <div class="ico">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3.8 12a8.2 8.2 0 1 0 2.4-5.8"/>
+                        <path d="M3.5 4.2v4.2h4.2"/>
+                        <path d="M12 8.2V12l2.8 1.7"/>
+                    </svg>
+                </div>
+                <div class="card-body">
+                    <h3>历史记录</h3>
+                    <p>名下用户端提过的问题与生成过的方案都在这里，每条都标明是谁问的</p>
+                </div>
+                <div class="card-arrow">&rsaquo;</div>
+            </a>
+            {% endif %}
+
+            {% if not _admin %}
+            <a class="card c-pest" href="{{ url_for('advice_page', mode='pest') }}">
+                <div class="ico">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 21s7-3.4 7-9.2V5.8L12 2.8 5 5.8v6C5 17.6 12 21 12 21z"/>
+                        <path d="M9.2 12.2l2 2 3.6-3.8"/>
+                    </svg>
+                </div>
+                <div class="card-body">
+                    <h3>病虫害防治建议</h3>
+                    <p>选作物（可再指定病虫害），按绿色防控顺序给出防治方案与安全间隔期</p>
+                </div>
+                <div class="card-arrow">&rsaquo;</div>
+            </a>
+
+            <a class="card c-fert" href="{{ url_for('advice_page', mode='fertilizer') }}">
+                <div class="ico">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3.2s6.2 6.6 6.2 10.6a6.2 6.2 0 0 1-12.4 0C5.8 9.8 12 3.2 12 3.2z"/>
+                        <path d="M9.4 14.2a2.8 2.8 0 0 0 2.6 2.6"/>
+                    </svg>
+                </div>
+                <div class="card-body">
+                    <h3>水肥调控处方</h3>
+                    <p>需肥结构 → 推荐肥料 → 基肥 / 追肥 / 叶面施肥分期用量</p>
+                </div>
+                <div class="card-arrow">&rsaquo;</div>
+            </a>
+
+            <a class="card c-farm" href="{{ url_for('advice_page', mode='farm') }}">
+                <div class="ico">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/>
+                        <path d="M7.5 9h9M7.5 13h9M7.5 17h5"/>
+                    </svg>
+                </div>
+                <div class="card-body">
+                    <h3>农事管理方案</h3>
+                    <p>全生育期时间轴 + 各阶段关键农事操作，按作物一键生成</p>
+                </div>
+                <div class="card-arrow">&rsaquo;</div>
+            </a>
+
+            <a class="card c-plan" href="{{ url_for('advice_page', mode='planning') }}">
+                <div class="ico">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 6.6l5-2.1 6 2.1 5-2.1v13l-5 2.1-6-2.1-5 2.1z"/>
+                        <path d="M9 4.5v13M15 6.6v13"/>
+                    </svg>
+                </div>
+                <div class="card-body">
+                    <h3>生产规划报告</h3>
+                    <p>按土壤、气温、降水、产区等条件筛选适种作物，附茬口与风险提示</p>
+                </div>
+                <div class="card-arrow">&rsaquo;</div>
+            </a>
+
+            <a class="card c-econ" href="{{ url_for('econ_page') }}">
+                <div class="ico">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3.2v17.6"/>
+                        <path d="M15.6 7.4H10a2.6 2.6 0 0 0 0 5.2h4a2.6 2.6 0 0 1 0 5.2H8.4"/>
+                    </svg>
+                </div>
+                <div class="card-body">
+                    <h3>经济效益测算</h3>
+                    <p>填亩产、收购价与各项成本，自动算净收益与保本价，几个作物摆一起比出种啥更划算</p>
+                </div>
+                <div class="card-arrow">&rsaquo;</div>
+            </a>
+            {% endif %}
+
+            {% if not _admin %}
+            <a class="card c-qa" href="{{ url_for('qa_page') }}">
+                <div class="ico">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20.5 12.4c0 4.1-3.8 7.4-8.5 7.4-1 0-2-.15-2.9-.42L4.4 21l1.3-3.6A7 7 0 0 1 3.5 12.4C3.5 8.3 7.3 5 12 5s8.5 3.3 8.5 7.4z"/>
+                        <path d="M9.9 10.6a2.2 2.2 0 1 1 2.9 2.1c-.5.2-.8.6-.8 1.1v.3"/>
+                        <path d="M12 16.2h.01"/>
+                    </svg>
+                </div>
+                <div class="card-body">
+                    <h3>知识问答系统</h3>
+                    <p>自然语言提问，图谱检索 + 大模型润色，每条回答附知识溯源</p>
+                </div>
+                <div class="card-arrow">&rsaquo;</div>
+            </a>
+
+            <a class="card c-classic" href="{{ url_for('kg_display') }}">
+                <div class="ico">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/>
+                        <path d="M3.5 9.2h17M9 9.2V19.5"/>
+                    </svg>
+                </div>
+                <div class="card-body">
+                    <h3>经典图谱</h3>
+                    <p>按作物查看全部关系与结构化属性，支持搜索任意实体</p>
+                </div>
+                <div class="card-arrow">&rsaquo;</div>
+            </a>
+            {% endif %}
+
+            {# 管理端的第四个功能：用户端管理（唯一一处「管人」的入口） #}
+            {% if _admin %}
+            <a class="card c-admin" href="{{ url_for('admin_page') }}">
+                <div class="ico">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 12.4a3.9 3.9 0 1 0 0-7.8 3.9 3.9 0 0 0 0 7.8z"/>
+                        <path d="M4.5 20.4c0-3.2 3.4-5 7.5-5s7.5 1.8 7.5 5"/>
+                        <path d="M18.4 6.6v3.6M16.6 8.4h3.6"/>
+                    </svg>
+                </div>
+                <div class="card-body">
+                    <h3>用户端管理 <span class="badge">管理端</span></h3>
+                    <p>添加用户端账号、指定它能种哪些作物与土质，也可纳入已注册的账号</p>
+                </div>
+                <div class="card-arrow">&rsaquo;</div>
+            </a>
+            {% endif %}
+        </section>
+
+        <footer class="foot">
+            <div>
+                识别与处方结果仅供田间参考，重大病虫害请以当地植保部门鉴定为准
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // 顶栏日期
+        (function () {
+            const d = new Date();
+            const w = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
+            document.getElementById('heroDate').textContent =
+                `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日　星期${w}`;
+        })();
+    </script>
+</body>
+</html>

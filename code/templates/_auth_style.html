@@ -1,0 +1,363 @@
+{# 登录 / 注册页共用样式：底图铺满整页 + 单列卡片贴在右侧
+   底图 = static/img/login_bg.jpg（玉米田 + 雪山，16:9；换图直接覆盖同名文件）
+   原先的「左侧整块品牌面板」已去掉，只在卡片顶部留一行 logo + 平台名
+
+   配色：品牌蓝 #2F5597 / 品牌绿 #3F7D5F（与 logo、按钮渐变同源）
+        正文 #16202c、次要 #5d6d80、提示 #8494a6
+        卡片 = 半透明白 + 背景虚化（底图的绿透一点进来，不再是一块死白） #}
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: "Microsoft YaHei", "PingFang SC", system-ui, Arial, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;                /* 卡片贴右，左边整片让给底图 */
+        padding: 28px clamp(28px, 7vw, 200px) 28px 28px;
+        background: #cfe0d2 url("{{ url_for('static', filename='img/login_bg.jpg') }}")
+                    center center / cover no-repeat fixed;
+        color: #16202c;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* 背景视频：盖在静态底图之上、蒙版之下。
+       视频没就绪（或加载失败）时它是透明的，露出来的就是 body 的 login_bg.jpg，
+       所以「静态图 ⇄ 视频」两种形态都不会闪黑屏，删掉视频文件也能正常显示。 */
+    .bg-video {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 0;
+        opacity: 0;
+        transition: opacity 1.2s ease;
+        pointer-events: none;
+    }
+    .bg-video.on { opacity: 1; }
+
+    /* 照片上压一层很淡的暗色：卡片才有边界感。
+       压重了会把雪山和云的层次压灰，15% 是试出来的平衡点。 */
+    body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 38, 26, .15);
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    /* 有左侧信息面板时（login 页），蒙版换成「左深右浅」：
+       左边白色文字才压得住，右侧卡片区仍能看清底图/视频。
+       register 页没有 .side，不加 has-side，保持原来均匀的 15%。 */
+    body.has-side::before {
+        background: linear-gradient(100deg,
+            rgba(9, 27, 19, .68) 0%,
+            rgba(9, 27, 19, .52) 24%,
+            rgba(9, 27, 19, .28) 44%,
+            rgba(9, 27, 19, .10) 64%,
+            rgba(9, 27, 19, .05) 100%);
+    }
+
+    /* 整页只有这一块卡片；要压在蒙版与背景视频之上，所以起一层 z-index（蒙版 1 / 视频 0）。
+       ⚠ 卡面是「半透明白」不是纯白：底图的绿会透一点进来，跟照片更融洽。
+         外面那圈 1px 白色高光是毛玻璃的描边，去掉卡片就会糊进绿地里。
+         不支持 backdrop-filter 的浏览器退化成 92% 白，可读性不受影响。 */
+    .auth {
+        position: relative;
+        z-index: 2;
+        width: 100%;
+        max-width: 428px;
+        background: rgba(255, 255, 255, .92);
+        -webkit-backdrop-filter: blur(24px) saturate(150%);
+        backdrop-filter: blur(24px) saturate(150%);
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 20px 54px rgba(12, 30, 22, .26),
+                    0 0 0 1px rgba(255, 255, 255, .5);
+    }
+
+    /* ---------------- 顶部品牌条 ---------------- */
+    .brand-mini {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 24px 32px 0;
+    }
+    .brand-mini-logo {
+        width: 38px; height: 38px;
+        flex: none;
+        border-radius: 11px;
+        background: linear-gradient(140deg, #2F5597, #3f7d5f);
+        display: flex; align-items: center; justify-content: center;
+    }
+    .brand-mini-logo svg { width: 21px; height: 21px; }
+    .brand-mini .bm-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #16202c;
+        letter-spacing: .3px;
+        line-height: 1.35;
+    }
+    .brand-mini .bm-sub {
+        font-size: 11.5px;
+        color: #7f8fa1;
+        margin-top: 1px;
+        line-height: 1.4;
+    }
+
+    /* ---------------- 表单 ---------------- */
+    .panel {
+        padding: 18px 32px 30px;
+        display: flex;
+        flex-direction: column;
+    }
+    .panel h2 { font-size: 21px; font-weight: 600; color: #16202c; letter-spacing: .3px; }
+    .panel .hint { font-size: 13px; color: #8494a6; margin: 9px 0 24px; line-height: 1.6; }
+    .panel .hint.tight { margin-bottom: 14px; }
+
+    /* ---------------- 管理端 / 用户端 入口切换 ----------------
+       容器改成带品牌蓝的淡底（原来是中性灰，在纯白卡上发闷），
+       选中项：白底 + 极细蓝圈 + 更深一档的蓝字 —— 一眼看出选的是哪个 */
+    .roles {
+        display: flex;
+        gap: 6px;
+        padding: 4px;
+        border-radius: 11px;
+        background: #e9f0fa;
+        border: 1px solid #dbe7f6;
+        margin: 16px 0;
+    }
+    .roles a {
+        flex: 1;
+        text-align: center;
+        padding: 10px 6px;
+        border-radius: 8px;
+        font-size: 13.5px;
+        color: #5d6d80;
+        text-decoration: none;
+        transition: background .15s, color .15s, box-shadow .15s;
+    }
+    .roles a:hover { color: #2F5597; }
+    .roles a.on {
+        background: #fff;
+        color: #21507f;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(36, 80, 127, .16), 0 0 0 1px #cfe0f7;
+    }
+    .roles a small { display: block; font-size: 11px; font-weight: 400; color: #75879c; margin-top: 2px; }
+    .roles a.on small { color: #5f83b4; }
+
+    /* 角色说明：改用品牌绿的淡底，跟下面中性色的输入框拉开层次 */
+    .role-note {
+        font-size: 12px;
+        line-height: 1.7;
+        color: #5f7167;
+        background: #f1f7f3;
+        border: 1px solid #d9eae0;
+        border-radius: 9px;
+        padding: 10px 12px;
+        margin-bottom: 18px;
+    }
+    .role-note b { color: #2C6B4E; }
+
+    .field { margin-bottom: 17px; }
+    .field label { display: block; font-size: 12.5px; color: #5d6d80; margin-bottom: 7px; }
+    .ipt { position: relative; }
+    .ipt > svg {
+        position: absolute;
+        left: 13px; top: 50%;
+        transform: translateY(-50%);
+        width: 16px; height: 16px;
+        stroke: #93a3b5;
+        pointer-events: none;
+    }
+    .ipt input {
+        width: 100%;
+        padding: 12px 14px 12px 40px;
+        border: 1px solid #dfe8f2;
+        border-radius: 10px;
+        font-size: 14.5px;
+        font-family: inherit;
+        color: #16202c;
+        background: #f6f9fc;
+        outline: none;
+        transition: border-color .18s, box-shadow .18s, background .18s;
+    }
+    .ipt input:hover { border-color: #c9d9ea; }
+    .ipt input:focus {
+        border-color: #2F5597;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(47, 85, 151, .16);
+    }
+    .ipt input::placeholder { color: #8b9db4; }
+
+    /* 关键：覆盖浏览器自动填充的黄色底。
+       ⚠ 内嵌阴影的色值必须跟上面 input 的 background 一致，否则自动填充时是两个颜色 */
+    .ipt input:-webkit-autofill,
+    .ipt input:-webkit-autofill:hover,
+    .ipt input:-webkit-autofill:focus {
+        -webkit-text-fill-color: #16202c;
+        -webkit-box-shadow: 0 0 0 40px #f6f9fc inset;
+        box-shadow: 0 0 0 40px #f6f9fc inset;
+        transition: background-color 9999s ease-in-out 0s;
+    }
+
+    .btn {
+        width: 100%;
+        margin-top: 12px;
+        padding: 13px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 500;
+        color: #fff;
+        letter-spacing: 3px;
+        /* 中间补一个蓝绿过渡色：不补的话蓝→绿会从灰绿穿过去，显脏 */
+        background: linear-gradient(100deg, #2F5597 0%, #35707F 52%, #3f7d5f 100%);
+        box-shadow: 0 6px 18px rgba(47, 85, 151, .22);
+        transition: transform .16s, box-shadow .16s, filter .16s;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(47, 85, 151, .3); }
+    .btn:active { transform: translateY(0); box-shadow: 0 4px 12px rgba(47, 85, 151, .22); }
+
+    .msg {
+        font-size: 13px;
+        padding: 10px 13px;
+        border-radius: 9px;
+        margin-bottom: 15px;
+        line-height: 1.6;
+    }
+    .msg.err { color: #a32d2d; background: #fdece9; border: 1px solid #f6c2bd; }
+    .msg.ok { color: #23674a; background: #e8f5ee; border: 1px solid #c9e7d8; }
+
+    .foot { margin-top: 24px; font-size: 13px; color: #7d8da1; text-align: center; }
+    .foot a { color: #2F5597; text-decoration: none; font-weight: 500; }
+    .foot a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+    /* ---------------- 左侧信息面板（仅 login 页） ----------------
+       左边原来整片空着只有照片，这里放：一句定位 + 一张「农业科普」轮播卡。
+       科普内容写在前端（见 login.html 里的 K 数组），不走接口 —— 登录页首屏
+       不该等后端；Neo4j 没起、MySQL 没起时这一块照样有内容。
+       ⚠ 窄屏会被右侧卡片压住，所以 1100px 以下整块藏掉（卡片本身在手机上仍居中可用）。 */
+    .side {
+        position: fixed;
+        left: clamp(40px, 6.5vw, 118px);
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+        /* 字号放大后这块要跟着加宽，不然标题会多折一行。
+           注意别超过右侧登录卡：1100px 时两者之间还留着约 50px 空隙。 */
+        width: min(540px, 43vw);
+        color: #fff;
+    }
+    .side-kicker {
+        display: inline-block;
+        font-size: 14px;
+        letter-spacing: .16em;
+        color: #dceade;
+        border: 1px solid rgba(255, 255, 255, .3);
+        border-radius: 999px;
+        padding: 6px 16px;
+        background: rgba(255, 255, 255, .1);
+    }
+    .side h1 {
+        margin-top: 20px;
+        font-size: clamp(30px, 3.1vw, 46px);
+        font-weight: 600;
+        line-height: 1.34;
+        letter-spacing: .6px;
+        text-shadow: 0 2px 20px rgba(6, 20, 13, .42);
+    }
+    .side-sub {
+        margin-top: 16px;
+        font-size: 16px;
+        color: #d9e8dd;
+        letter-spacing: .1em;
+        line-height: 1.7;
+    }
+
+    /* 科普卡：半透明深色玻璃。用不透明色块会把底图的绿压死，照片感就没了 */
+    .kcard {
+        position: relative;
+        margin-top: 30px;
+        min-height: 172px;
+        background: rgba(255, 255, 255, .1);
+        border: 1px solid rgba(255, 255, 255, .22);
+        border-radius: 16px;
+        padding: 18px 20px 20px;
+        -webkit-backdrop-filter: blur(10px) saturate(130%);
+        backdrop-filter: blur(10px) saturate(130%);
+        /* 可以左右滑动切换：鼠标按下给个抓手光标，拖动时不选中文字，
+           纵向留给页面滚动（pan-y），横向手势由 JS 处理 */
+        cursor: grab;
+        touch-action: pan-y;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+    .kcard:active { cursor: grabbing; }
+    /* 正文与头部一起往里让，给左右两枚箭头腾出位置（不然字会压到箭头上） */
+    .kcard-head, .kbody { padding-left: 34px; padding-right: 34px; }
+    .kcard-head { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+    /* 左右切换箭头：贴在卡片左右两侧、垂直居中。手机端整块 .side 是隐藏的，
+       所以这里按桌面点击来定尺寸（30px），不必按触屏的 44px 标准放大 */
+    .kcard-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 30px; height: 30px;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, .28);
+        border-radius: 50%;
+        background: rgba(255, 255, 255, .12);
+        cursor: pointer;
+        z-index: 2;
+        transition: background .15s, border-color .15s, transform .15s;
+    }
+    .kcard-nav.prev { left: 8px; }
+    .kcard-nav.next { right: 8px; }
+    .kcard-nav:hover { background: rgba(255, 255, 255, .28); border-color: rgba(255, 255, 255, .55); }
+    .kcard-nav:active { transform: translateY(-50%) scale(.92); }
+    .kcard-nav:focus-visible { outline: 2px solid rgba(255, 255, 255, .75); outline-offset: 2px; }
+    .kcard-nav svg {
+        width: 14px; height: 14px;
+        stroke: #fff; stroke-width: 2.2;
+        fill: none; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .kcard-tag {
+        font-size: 13px;
+        letter-spacing: .12em;
+        color: #eef7f1;
+        background: rgba(63, 125, 95, .9);
+        border-radius: 6px;
+        padding: 4px 10px;
+    }
+    .kcard-dots { margin-left: auto; display: flex; align-items: center; gap: 5px; }
+    .kcard-dots i {
+        display: block;
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, .34);
+        transition: background .3s, width .3s, border-radius .3s;
+    }
+    .kcard-dots i.on { background: #fff; width: 16px; border-radius: 3px; }
+    .kbody { transition: opacity .4s ease; }
+    .kbody.out { opacity: 0; }
+    .k-title { font-size: 19px; font-weight: 600; color: #fff; letter-spacing: .3px; }
+    .k-text { margin-top: 10px; font-size: 15.5px; line-height: 1.9; color: #e6f0ea; }
+
+    @media (max-width: 1100px) { .side { display: none; } }
+
+    /* ---------------- 窄屏 ---------------- */
+    @media (max-width: 560px) {
+        /* 手机屏上贴右会挤到边，改成居中铺满 */
+        body { justify-content: center; padding: 16px; }
+        .auth { max-width: 100%; }
+        .brand-mini { padding: 20px 22px 0; }
+        .panel { padding: 16px 22px 26px; }
+        .panel h2 { font-size: 19px; }
+    }
+</style>

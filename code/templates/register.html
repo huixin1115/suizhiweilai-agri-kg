@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 · 穗知未来</title>
+    {% include '_auth_style.html' %}
+</head>
+<body>
+    <div class="auth">
+        <!-- 顶部一条品牌信息（原来左侧整块品牌面板已去掉） -->
+        <div class="brand-mini">
+            <div class="brand-mini-logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 21c0-6 0-9 0-12"/>
+                    <path d="M12 12c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6z"/>
+                    <path d="M12 16c0-2.8-2.2-5-5-5 0 2.8 2.2 5 5 5z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="bm-name">穗知未来</div>
+                <div class="bm-sub">注册后即可使用全部功能，数据仅用于本地演示环境</div>
+            </div>
+        </div>
+
+        <!-- 注册表单 -->
+        <div class="panel">
+            <h2>注册账号</h2>
+            <div class="hint tight">填写用户名与密码即可创建账号</div>
+
+            {% set _role = role or 'user' %}
+            <div class="roles">
+                <a class="{{ 'on' if _role == 'user' }}" href="{{ url_for('register', role='user') }}">
+                    用户端<small>记录地块 · 看今日农事</small>
+                </a>
+                <a class="{{ 'on' if _role == 'admin' }}" href="{{ url_for('register', role='admin') }}">
+                    管理端<small>管理用户端与可种植作物</small>
+                </a>
+            </div>
+
+            {% if _role == 'admin' %}
+                <div class="role-note">
+                    <b>管理端</b>：注册后可进入管理端控制台，用「添加用户端」直接为用户开账号，
+                    并指定每个账号<strong>能种植的作物</strong>。
+                </div>
+            {% else %}
+                <div class="role-note">
+                    <b>用户端</b>：注册后可自行建档、提问。<br>
+                    如果管理员已经为你开好账号，直接去登录即可，不必重复注册。
+                </div>
+            {% endif %}
+
+            {% if error %}
+                <div class="msg err">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" action="{{ url_for('register') }}">
+                <input type="hidden" name="role" value="{{ _role }}">
+                <div class="field">
+                    <label for="username">用户名</label>
+                    <div class="ipt">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 12.2a4.1 4.1 0 1 0 0-8.2 4.1 4.1 0 0 0 0 8.2z"/>
+                            <path d="M4.2 20.2c0-3.4 3.5-5.2 7.8-5.2s7.8 1.8 7.8 5.2"/>
+                        </svg>
+                        <input type="text" id="username" name="username" required
+                               value="{{ request.form.get('username', '') }}"
+                               placeholder="请输入用户名" autocomplete="username">
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="password">密码</label>
+                    <div class="ipt">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="4.2" y="10.2" width="15.6" height="9.6" rx="2.4"/>
+                            <path d="M8 10.2V7.4a4 4 0 0 1 8 0v2.8"/>
+                        </svg>
+                        <input type="password" id="password" name="password" required
+                               placeholder="请输入密码" autocomplete="new-password">
+                    </div>
+                </div>
+                <button type="submit" class="btn">
+                    {{ '注 册 · 管理端' if _role == 'admin' else '注 册' }}
+                </button>
+            </form>
+
+            <div class="foot">已有账号？<a href="{{ url_for('login', role=_role) }}">返回登录</a></div>
+        </div>
+    </div>
+</body>
+</html>

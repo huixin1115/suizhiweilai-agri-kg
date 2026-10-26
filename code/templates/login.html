@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 · 穗知未来</title>
+    {% include '_auth_style.html' %}
+</head>
+<body class="has-side">
+    {# 背景视频：static/video/login_bg.mp4（静音、循环、自动播放）。
+       poster + body 的静态底图兜底 —— 视频没生成/加载失败/浏览器拦自动播放时，
+       看到的还是原来那张 login_bg.jpg，不会是一块空白。
+       ⚠ 片段是「一直向前」的无缝循环（crossfade loop，见 workspace 的
+         make_forward_loop.py）；换素材时记得把下面的 ?v= 一起改，
+         否则浏览器会拿缓存里的旧片。 #}
+    <video class="bg-video" id="bgVideo" autoplay muted loop playsinline preload="auto"
+           poster="{{ url_for('static', filename='img/login_bg.jpg') }}">
+        <source src="{{ url_for('static', filename='video/login_bg.mp4') }}?v=fwd1"
+                type="video/mp4">
+    </video>
+
+    {# 左侧信息面板：一句定位 + 农业科普轮播（内容见页面底部的 K 数组，不走接口） #}
+    <div class="side">
+        <div class="side-kicker">穗知未来——农业知识图谱智能决策服务系统</div>
+        <h1>让每一次种植决策<br>都有据可依</h1>
+        <p class="side-sub">拍照识病 · 物候期提醒 · 知识问答 · 决策处方</p>
+
+        <div class="kcard">
+            <button class="kcard-nav prev" id="kprev" type="button" aria-label="上一条科普">
+                <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+            </button>
+            <button class="kcard-nav next" id="knext" type="button" aria-label="下一条科普">
+                <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+            </button>
+            <div class="kcard-head">
+                <span class="kcard-tag">农业科普</span>
+                <div class="kcard-dots" id="kdots"></div>
+            </div>
+            <div class="kbody" id="kbody">
+                <div class="k-title" id="ktitle"></div>
+                <div class="k-text" id="ktext"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="auth">
+        <!-- 顶部一条品牌信息（原来左侧整块品牌面板已去掉） -->
+        <div class="brand-mini">
+            <div class="brand-mini-logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 21c0-6 0-9 0-12"/>
+                    <path d="M12 12c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6z"/>
+                    <path d="M12 16c0-2.8-2.2-5-5-5 0 2.8 2.2 5 5 5z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="bm-name">穗知未来</div>
+                <div class="bm-sub">农业知识图谱智能决策服务系统</div>
+            </div>
+        </div>
+
+        <!-- 登录表单 -->
+        <div class="panel">
+            <h2>欢迎登录</h2>
+
+            {# 两种身份走同一个登录口，先选入口，再填账号 #}
+            {% set _role = role or 'user' %}
+            <div class="roles">
+                <a class="{{ 'on' if _role == 'user' }}" href="{{ url_for('login', role='user') }}">
+                    用户端<small>今日农事 · 提问 · 处方</small>
+                </a>
+                <a class="{{ 'on' if _role == 'admin' }}" href="{{ url_for('login', role='admin') }}">
+                    管理端<small>添加用户 · 分配作物</small>
+                </a>
+            </div>
+
+            {# 原先这里有两块「角色说明」提示条（用户端 / 管理端各一条），
+               用户要求去掉，只保留上面的入口 tab。role-note 样式还在，
+               注册页仍在使用，所以别从 _auth_style.html 里删。 #}
+
+            {% if success %}
+                <div class="msg ok">{{ success }}</div>
+            {% endif %}
+            {% if error %}
+                <div class="msg err">
+                    {{ error }}
+                    {% if switch_to %}
+                        <a href="{{ url_for('login', role=switch_to) }}"
+                           style="color:inherit;font-weight:600;text-decoration:underline">
+                            用{{ '管理端' if switch_to == 'admin' else '用户端' }}入口登录 &rsaquo;
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            <form method="post" action="{{ url_for('login') }}">
+                <input type="hidden" name="role" value="{{ _role }}">
+                <div class="field">
+                    <label for="username">用户名</label>
+                    <div class="ipt">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 12.2a4.1 4.1 0 1 0 0-8.2 4.1 4.1 0 0 0 0 8.2z"/>
+                            <path d="M4.2 20.2c0-3.4 3.5-5.2 7.8-5.2s7.8 1.8 7.8 5.2"/>
+                        </svg>
+                        <input type="text" id="username" name="username" required
+                               value="{{ request.form.get('username', '') }}"
+                               placeholder="请输入用户名" autocomplete="username">
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="password">密码</label>
+                    <div class="ipt">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="4.2" y="10.2" width="15.6" height="9.6" rx="2.4"/>
+                            <path d="M8 10.2V7.4a4 4 0 0 1 8 0v2.8"/>
+                        </svg>
+                        <input type="password" id="password" name="password" required
+                               placeholder="请输入密码" autocomplete="current-password">
+                    </div>
+                </div>
+                <button type="submit" class="btn">
+                    {{ '登 录 · 管理端' if _role == 'admin' else '登 录' }}
+                </button>
+            </form>
+
+            <div class="foot">还没有账号？<a href="{{ url_for('register', role=_role) }}">立即注册</a></div>
+        </div>
+    </div>
+    <script>
+    (function () {
+        /* ---------------- 背景视频 ----------------
+           片子本身已经做成「正放 + 倒放」的无缝循环（10.08s，见 static/video/login_bg.mp4），
+           所以这里只负责在就绪后淡入一次，不需要再处理接缝。
+           视频不存在 / 解码失败 / 浏览器拦了自动播放 / 系统开了「减少动态效果」——
+           这几种情况都只是不显示，露出来的还是 body 上那张 login_bg.jpg，页面不会空。 */
+        var motionOk = !(window.matchMedia &&
+                         window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        var v = document.getElementById('bgVideo');
+        if (v && !motionOk) { v.parentNode.removeChild(v); v = null; }
+        if (v) {
+            var show = function () { v.classList.add('on'); };
+            if (v.readyState >= 3) { show(); }
+            else {
+                v.addEventListener('canplay', show);
+                v.addEventListener('playing', show);
+            }
+            v.addEventListener('error', function () { v.style.display = 'none'; });
+            var auto = v.play();
+            if (auto && auto.catch) { auto.catch(function () {}); }
+        }
+
+        /* ---------------- 左侧「农业科普」轮播 ----------------
+           内容写死在这里、不走接口：登录页是未登录状态，首屏不该等后端；
+           Neo4j / MySQL 都没起的时候这一块照样有内容。
+           条目都取自本项目图谱里真实存在的实体，跟系统能力对得上。 */
+        var K = [
+            { t: '小麦条锈病',
+              d: '叶面出现鲜黄色、排列成行的孢子堆，多雨高湿、结露时间长时扩展最快。选用抗病品种、适期播种，发病初期及时用药是关键。' },
+            { t: '土壤酸碱度与施肥',
+              d: 'pH 6.0~7.0 时氮磷钾有效性最高。偏酸地块（pH 低于 5.5）磷易被铁铝固定，先调酸再施肥，同样的肥效能高不少。' },
+            { t: '小麦拔节期追肥',
+              d: '返青到拔节是决定穗数与穗粒数的关键期，缺氮会造成小穗退化。群体偏弱时在拔节前追施氮肥，比返青期一次重施更有效。' },
+            { t: '番茄脐腐病',
+              d: '果顶凹陷发黑不是病菌侵染，而是缺钙加上土壤水分忽干忽湿，钙运不到果实。均衡供水配合叶面补钙，比反复打杀菌剂有用。' },
+            { t: '马铃薯不宜连作',
+              d: '马铃薯与番茄、辣椒同属茄科，连作会让青枯、疮痂等土传病害逐年加重。与禾本科作物轮作两三年，是成本最低的防治手段。' },
+            { t: '玉米螟防治窗口',
+              d: '心叶末期（喇叭口期）是最佳防治窗口，此时幼虫尚未蛀入茎秆、防效最高；拖到抽雄后再打药，效果会明显下降。' }
+        ];
+
+        var titleEl = document.getElementById('ktitle'),
+            textEl = document.getElementById('ktext'),
+            bodyEl = document.getElementById('kbody'),
+            dotsEl = document.getElementById('kdots');
+        if (!titleEl || !dotsEl || !K.length) { return; }
+
+        var html = '', i;
+        for (i = 0; i < K.length; i++) { html += '<i' + (i ? '' : ' class="on"') + '></i>'; }
+        dotsEl.innerHTML = html;
+        var dotEls = dotsEl.getElementsByTagName('i');
+
+        var idx = 0, timer = null, pend = null;
+
+        function paint(n) {
+            titleEl.textContent = K[n].t;
+            textEl.textContent = K[n].d;
+            for (var j = 0; j < dotEls.length; j++) { dotEls[j].className = (j === n ? 'on' : ''); }
+        }
+
+        /* 换一条：先淡出 → 换内容 → 再淡入。
+           pend 让连续滑动不打架：上一条还没淡完又滑了一次，就改目标 + 重排定时器。
+           ⚠ 函数名别叫 `show`：上面背景视频那段有个 `var show = function(){...}`，
+             都在同一个 IIFE 作用域里，会把这里的函数声明覆盖掉 ——
+             结果滑动"看着执行了却什么都不动"，查半天。 */
+        function showCard(n, fade) {
+            idx = ((n % K.length) + K.length) % K.length;
+            if (!fade) { paint(idx); return; }
+            bodyEl.classList.add('out');
+            if (pend) { clearTimeout(pend); }
+            pend = setTimeout(function () {
+                paint(idx);
+                bodyEl.classList.remove('out');
+                pend = null;
+            }, 400);
+        }
+        paint(0);
+
+        /* 尊重系统的「减少动态效果」设置：开了就不自动轮播，但手动滑动照样能用 */
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        function stopAuto() {
+            if (timer) { clearInterval(timer); timer = null; }
+        }
+        function startAuto() {
+            stopAuto();
+            if (reduced || K.length < 2) { return; }
+            timer = setInterval(function () { showCard(idx + 1, true); }, 7000);
+        }
+        startAuto();
+
+        /* ---------------- 左右滑动切换科普卡 ----------------
+           用 pointer 事件，触屏 / 触控笔 / 鼠标拖拽一套逻辑通吃。
+           · 横向位移明显大于纵向才算滑动，否则用户是在上下滚页面；
+           · 手指抬起后自动轮播重新计时，免得刚滑完就被自动换掉。 */
+        var card = document.querySelector('.kcard');
+        if (card && K.length > 1) {
+            var x0 = 0, y0 = 0, down = false, swiped = false;
+
+            function onMove(e) {
+                if (!down) { return; }
+                var dx = e.clientX - x0, dy = e.clientY - y0;
+                if (!swiped && Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy)) { swiped = true; }
+            }
+            function onUp(e) {
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+                window.removeEventListener('pointercancel', onUp);
+                if (!down) { return; }
+                down = false;
+                var dx = (e && typeof e.clientX === 'number') ? e.clientX - x0 : 0;
+                if (swiped && Math.abs(dx) > 36) {
+                    showCard(idx + (dx < 0 ? 1 : -1), true);   /* 左滑下一条、右滑上一条 */
+                }
+                startAuto();
+            }
+
+            card.addEventListener('pointerdown', function (e) {
+                if (e.pointerType === 'mouse' && e.button !== 0) { return; }
+                x0 = e.clientX; y0 = e.clientY;
+                down = true; swiped = false;
+                stopAuto();
+                window.addEventListener('pointermove', onMove);
+                window.addEventListener('pointerup', onUp);
+                window.addEventListener('pointercancel', onUp);
+            });
+        }
+
+        /* ---------------- 卡片左右两侧的箭头：点一下翻一条 ----------------
+           箭头就在卡片内部，pointerdown 必须 stopPropagation —— 否则会冒泡进上面的
+           滑动逻辑，被当成"开始拖拽"（会暂停自动轮播、还会留下悬挂的拖动状态）。
+           顺带白拿一个好处：<button> 天生可聚焦，键盘 Tab + 回车也能翻。 */
+        function bindNav(id, step) {
+            var btn = document.getElementById(id);
+            if (!btn) { return; }
+            btn.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                showCard(idx + step, true);
+                startAuto();          /* 点完重新计时，免得刚点完就被自动轮播顶掉 */
+            });
+        }
+        bindNav('kprev', -1);
+        bindNav('knext', 1);
+    })();
+    </script>
+</body>
+</html>
