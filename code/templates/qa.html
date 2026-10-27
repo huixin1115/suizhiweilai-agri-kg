@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>知识图谱 RAG · 穗知未来</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; max-width: 1080px; margin: 0 auto;
+               padding: 18px; background: #f4f6f9; color: #1f2937; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+                  background: linear-gradient(100deg, #2F5597, #3f7d5f); color: #fff; padding: 13px 20px; border-radius: 10px; }
+        .header h1 { font-size: 17px; font-weight: 600; }
+        .header nav a { color: #fff; text-decoration: none; font-size: 12.5px; margin-left: 13px;
+                        border: 1px solid rgba(255,255,255,.5); padding: 3px 10px; border-radius: 6px; }
+        .header nav a:hover { background: rgba(255,255,255,.15); }
+        .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(15,23,42,.08); padding: 16px 18px; margin-bottom: 13px; }
+        .modes { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+        .mode { padding: 6px 14px; border-radius: 18px; border: 1px solid #cbd5e1; background: #fff;
+                font-size: 12.5px; cursor: pointer; color: #334155; }
+        .mode:hover { border-color: #2F5597; color: #2F5597; }
+        .mode.on { background: #2F5597; border-color: #2F5597; color: #fff; }
+        textarea { width: 100%; height: 84px; padding: 11px 13px; border: 1px solid #cbd5e1; border-radius: 8px;
+                   font-family: inherit; font-size: 14px; resize: vertical; outline: none; }
+        textarea:focus { border-color: #2F5597; box-shadow: 0 0 0 3px rgba(47,85,151,.12); }
+        .row { display: flex; gap: 9px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+        button { padding: 9px 22px; background: #2F5597; color: #fff; border: none; border-radius: 8px;
+                 cursor: pointer; font-size: 13.5px; font-family: inherit; }
+        button:hover { background: #26477c; }
+        button:disabled { opacity: .6; cursor: not-allowed; }
+        .hint { color: #64748b; font-size: 12.5px; }
+        .examples { margin-top: 12px; font-size: 12.5px; color: #6b7280; line-height: 2.1; }
+        .ex { display: inline-block; background: #eef3fb; color: #2F5597; border-radius: 5px;
+              padding: 2px 9px; margin: 2px 5px 2px 0; cursor: pointer; }
+        .ex:hover { background: #dbe7f8; }
+        #meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; font-size: 12.5px; }
+        .chip { background: #f1f5f9; border-radius: 6px; padding: 3px 10px; color: #334155; }
+        .chip.ok { background: #e8f5ee; color: #256b45; }
+        .chip.warn { background: #fdf1e3; color: #9a5b12; }
+        #answer { font-size: 14px; line-height: 1.95; white-space: pre-wrap; }
+        #answer h2 { font-size: 16px; color: #2F5597; margin: 3px 0 9px; white-space: normal; }
+        #answer h3 { font-size: 14px; color: #334155; margin: 12px 0 6px; white-space: normal;
+                     padding-left: 8px; border-left: 3px solid #3f7d5f; }
+        #answer ul, #answer ol { margin: 6px 0 6px 20px; }
+        #answer blockquote { background: #f7fafc; border-left: 3px solid #cbd5e1; padding: 8px 12px;
+                             margin: 8px 0; color: #475569; font-size: 13px; border-radius: 0 6px 6px 0; white-space: normal; }
+        #answer table { border-collapse: collapse; width: 100%; margin: 9px 0; font-size: 13px; white-space: normal; }
+        #answer th, #answer td { border: 1px solid #e2e8f0; padding: 6px 9px; text-align: left; }
+        #answer th { background: #f1f5f9; }
+        #srcs { font-size: 12.5px; line-height: 1.95; max-height: 240px; overflow: auto; }
+        #srcs div { padding: 2px 0; border-bottom: 1px dashed #eef2f7; color: #475569; }
+        .empty { color: #94a3b8; font-size: 13px; }
+        .spin { display: inline-block; width: 13px; height: 13px; border: 2px solid #cbd5e1;
+                border-top-color: #2F5597; border-radius: 50%; animation: sp .8s linear infinite;
+                vertical-align: -2px; margin-right: 6px; }
+        @keyframes sp { to { transform: rotate(360deg); } }
+
+        /* ---------------- 追问建议 ---------------- */
+        .fu-head { font-size: 12.5px; color: #64748b; margin-bottom: 8px; }
+        .fu-list { display: flex; flex-wrap: wrap; gap: 7px; }
+        .fu-list .ex { margin: 0; font-size: 12.5px; }
+        .fu-list .ex::before { content: "＋ "; color: #94a3b8; }
+
+        /* ---------------- 用户反馈 ---------------- */
+        .fb-head { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin-bottom: 10px; }
+        .fb-head b { font-size: 13.5px; color: #374151; }
+        .fb-note { font-size: 12px; color: #94a3b8; }
+        .fb-btn {
+            font-size: 13px; padding: 7px 16px; border-radius: 8px;
+            border: 1px solid #cbd5e1; background: #fff; color: #334155;
+            cursor: pointer; transition: .15s; font-family: inherit;
+        }
+        .fb-btn:hover { border-color: #2F5597; color: #2F5597; background: #fff; }
+        .fb-btn.on { border-color: #2F5597; background: #eef3fb; color: #2F5597; font-weight: 600; }
+        .fb-extra { margin-top: 11px; }
+        .fb-extra textarea { height: 62px; font-size: 13px; }
+        .fb-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+        .fb-actions button { padding: 7px 18px; font-size: 13px; }
+        .fb-done { font-size: 13px; color: #334155; line-height: 1.9; }
+    </style>
+</head>
+<body>
+    {% include '_nav.html' %}
+    <div class="header">
+        <h1>知识图谱 RAG</h1>
+    </div>
+
+    <div class="card">
+        <div class="modes" id="modes">
+            <div class="mode on" data-mode="advisor">智能决策顾问（推荐）</div>
+            <div class="mode" data-mode="basic">基础图谱问答</div>
+        </div>
+        <textarea id="question" placeholder="请输入农业问题，例如：小麦条锈病怎么防治 / 番茄怎么施肥 / 水稻农事管理方案 / pH 6.5 年均温 18℃ 适合种什么"></textarea>
+        <div class="row">
+            <button id="go" onclick="submitQuestion()">提交查询</button>
+            <span class="hint">Ctrl + Enter 快速提交</span>
+        </div>
+        <div class="examples">
+            <b>推荐问法：</b>
+            <span class="ex">小麦条锈病怎么防治</span>
+            <span class="ex">番茄怎么施肥</span>
+            <span class="ex">水稻的农事管理方案</span>
+            <span class="ex">pH 6.5、年均温 18℃ 适合种什么</span>
+            <span class="ex">黄淮海平原适合种什么</span>
+            <span class="ex">玉米地里有马唐怎么除</span>
+            <span class="ex">土豆怎么种植</span>
+            <span class="ex">西红柿的适宜土壤是什么</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <div id="meta"><span class="empty">选择模式后提问，结果会显示在下方</span></div>
+        <div id="answer" class="empty">请输入问题并点击提交查询</div>
+    </div>
+
+    <!-- 追问建议：顺着刚问的话题继续问，省得再想怎么问 -->
+    <div class="card" id="fuCard" style="display:none;padding:13px 18px">
+        <div class="fu-head">顺着这个话题还能问</div>
+        <div class="fu-list" id="fuList"></div>
+    </div>
+
+    <div class="card">
+        <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px">
+            知识溯源 <span style="font-weight:400;color:#94a3b8;font-size:12px">（结论对应的图谱关系，可逐条复核）</span>
+        </div>
+        <div id="srcs"><span class="empty">暂无</span></div>
+    </div>
+
+    <!-- 用户反馈（出答案后才出现；数据库不可用时整块不显示） -->
+    <div class="card" id="fb" style="display:none">
+        <div class="fb-head">
+            <b>这条回答对你有帮助吗？</b>
+            <span class="fb-note">你的评价会记进「历史记录」，用来改进这一类问题</span>
+        </div>
+        <div class="fb-btns" id="fbBtns">
+            <button class="fb-btn" id="fbUp" type="button">有帮助</button>
+            <button class="fb-btn" id="fbDown" type="button">没帮助</button>
+        </div>
+        <div class="fb-extra" id="fbExtra" style="display:none">
+            <textarea id="fbComment" placeholder="哪里不对？可以写下正确的说法，或补充作物的品种、地块情况（选填）"></textarea>
+            <div class="fb-actions">
+                <button class="pri" id="fbSend" type="button">提交反馈</button>
+                <span class="hint" id="fbHint">提交后可在「历史记录」里看到这条评价</span>
+            </div>
+        </div>
+        <div class="fb-done" id="fbDone" style="display:none"></div>
+    </div>
+
+    <script src="/static/qa_stream.js"></script>
+    <script>
+        'use strict';
+        let mode = 'advisor';
+        document.getElementById('modes').addEventListener('click', e => {
+            const el = e.target.closest('.mode'); if (!el) return;
+            document.querySelectorAll('.mode').forEach(m => m.classList.remove('on'));
+            el.classList.add('on');
+            mode = el.dataset.mode;
+        });
+        document.querySelectorAll('.ex').forEach(el => el.onclick = () => {
+            document.getElementById('question').value = el.textContent;
+            submitQuestion();
+        });
+        document.getElementById('question').addEventListener('keydown', e => {
+            if (e.ctrlKey && e.key === 'Enter') submitQuestion();
+        });
+
+        /* ---------------- 追问建议 ---------------- */
+        function renderFollowups(list) {
+            const card = document.getElementById('fuCard');
+            const box = document.getElementById('fuList');
+            if (!list || !list.length) { card.style.display = 'none'; return; }
+            card.style.display = '';
+            box.innerHTML = list.map(q => '<span class="ex">' + esc(q) + '</span>').join('');
+            box.querySelectorAll('.ex').forEach(el => el.onclick = () => {
+                document.getElementById('question').value = el.textContent.replace(/^＋\s*/, '');
+                submitQuestion();
+            });
+        }
+
+        function entText(ent) {
+            const keys = Object.keys(ent || {});
+            return keys.length ? keys.map(k => k + '：' + ent[k]).join('　') : '无';
+        }
+
+        function showSources(srcs, emptyTip) {
+            document.getElementById('srcs').innerHTML = (srcs && srcs.length)
+                ? srcs.map(s => '<div>' + esc(s) + '</div>').join('')
+                : '<span class="empty">' + (emptyTip || '本条回答未引用图谱关系') + '</span>';
+        }
+
+        function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function inline(s) {
+            return esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+        }
+        function md2html(md, partial) {
+            let text = md || '';
+            if (partial) {
+                // 流式中间态：标记常常只写了一半（**加粗** 只有开头那两个星号、
+                // 表格刚写到表头）。先补尾 / 掐掉没写完的那一行，避免渲染时闪一下星号。
+                if (((text.match(/\*\*/g) || []).length) % 2) text += '**';
+                if (((text.match(/`/g) || []).length) % 2) text += '`';
+                const ls = text.split('\n');
+                if (ls.length && /^\s*\|/.test(ls[ls.length - 1])) { ls.pop(); text = ls.join('\n'); }
+            }
+            const lines = text.split('\n'), out = [];
+            let inTable = false, inUl = false, inOl = false;
+            const closeList = () => {
+                if (inUl) { out.push('</ul>'); inUl = false; }
+                if (inOl) { out.push('</ol>'); inOl = false; }
+            };
+            lines.forEach(raw => {
+                const line = raw.replace(/\s+$/, '');
+                if (/^\s*\|/.test(line)) {
+                    closeList();
+                    const cells = line.split('|').slice(1, -1).map(c => c.trim());
+                    if (!inTable) {
+                        out.push('<table><tr>' + cells.map(c => `<th>${inline(c)}</th>`).join('') + '</tr>');
+                        inTable = true;
+                    } else if (!cells.every(c => /^:?-{2,}:?$/.test(c) || c === '')) {
+                        out.push('<tr>' + cells.map(c => `<td>${inline(c)}</td>`).join('') + '</tr>');
+                    }
+                    return;
+                }
+                if (inTable) { out.push('</table>'); inTable = false; }
+                if (/^#{1,3}\s+/.test(line)) { closeList(); out.push(`<h2>${inline(line.replace(/^#{1,3}\s+/, ''))}</h2>`); return; }
+                if (/^>\s?/.test(line)) { closeList(); out.push(`<blockquote>${inline(line.replace(/^>\s?/, ''))}</blockquote>`); return; }
+                if (/^\s*[-*]\s+/.test(line)) {
+                    if (!inUl) { closeList(); out.push('<ul>'); inUl = true; }
+                    out.push(`<li>${inline(line.replace(/^\s*[-*]\s+/, ''))}</li>`); return;
+                }
+                if (/^\s*\d+[.、]\s+/.test(line)) {
+                    if (!inOl) { closeList(); out.push('<ol>'); inOl = true; }
+                    out.push(`<li>${inline(line.replace(/^\s*\d+[.、]\s+/, ''))}</li>`); return;
+                }
+                if (!line.trim()) { closeList(); return; }
+                closeList();
+                out.push(`<p>${inline(line)}</p>`);
+            });
+            if (inTable) out.push('</table>');
+            closeList();
+            // 用空串拼接：容器是 white-space:pre-wrap，若块级元素之间留 \n
+            // 会各自渲染成一个空行，段落间距被撑得很大
+            return out.join('');
+        }
+
+        /* ---------------- 用户反馈 ---------------- */
+        /* 每次出答案后，后端会带回 history_id；没有它（例如数据库不可用）就整块不显示 */
+        let fbId = null;
+
+        function fbReset() {
+            fbId = null;
+            document.getElementById('fb').style.display = 'none';
+            document.getElementById('fbBtns').style.display = '';
+            document.getElementById('fbExtra').style.display = 'none';
+            document.getElementById('fbDone').style.display = 'none';
+            document.getElementById('fbComment').value = '';
+            document.getElementById('fbHint').textContent = '提交后可在「历史记录」里看到这条评价';
+            document.getElementById('fbUp').classList.remove('on');
+            document.getElementById('fbDown').classList.remove('on');
+            const b = document.getElementById('fbSend');
+            b.disabled = false; b.textContent = '提交反馈';
+        }
+
+        function fbShow(hid) {
+            fbReset();
+            if (!hid) return;
+            fbId = hid;
+            document.getElementById('fb').style.display = '';
+        }
+
+        function fbSubmit(rating, btn) {
+            if (!fbId) return;
+            const comment = (document.getElementById('fbComment').value || '').trim();
+            if (btn) { btn.disabled = true; btn.textContent = '提交中…'; }
+            fetch('/api/history/' + fbId + '/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rating: rating, comment: comment })
+            }).then(r => r.json()).then(d => {
+                if (!d.ok) throw new Error(d.message || '提交失败');
+                document.getElementById('fbBtns').style.display = 'none';
+                document.getElementById('fbExtra').style.display = 'none';
+                const done = document.getElementById('fbDone');
+                done.style.display = '';
+                done.innerHTML = rating === 'helpful'
+                    ? '<span class="chip ok">已记录：有帮助</span>　谢谢，这条评价已存入历史记录'
+                    : '<span class="chip warn">已记录：没帮助</span>　谢谢指出，我们会据此修正这类回答';
+            }).catch(e => {
+                document.getElementById('fbHint').textContent = '提交失败：' + e.message;
+                if (btn) { btn.disabled = false; btn.textContent = '重试'; }
+            });
+        }
+
+        document.getElementById('fbUp').addEventListener('click', () => fbSubmit('helpful', null));
+        document.getElementById('fbDown').addEventListener('click', () => {
+            document.getElementById('fbUp').classList.remove('on');
+            document.getElementById('fbDown').classList.add('on');
+            document.getElementById('fbExtra').style.display = '';
+            document.getElementById('fbComment').focus();
+        });
+        document.getElementById('fbSend').addEventListener('click', function () {
+            fbSubmit('unhelpful', this);
+        });
+
+        // 从「历史记录」页点"再问一次"过来时，自动把问题填好
+        (function () {
+            const q = new URLSearchParams(location.search).get('q');
+            if (q) {
+                document.getElementById('question').value = q;
+                document.getElementById('question').focus();
+            }
+        })();
+
+        function submitQuestion() {
+            const question = document.getElementById('question').value.trim();
+            const go = document.getElementById('go');
+            if (!question) { document.getElementById('answer').textContent = '请输入有效的农业问题！'; return; }
+            go.disabled = true; go.textContent = '查询中…';
+            fbReset();
+            renderFollowups([]);
+            const ans = document.getElementById('answer');
+            ans.innerHTML = '<span class="spin"></span><span class="empty">正在检索知识图谱…</span>';
+            document.getElementById('srcs').innerHTML = '<span class="empty">加载中…</span>';
+            document.getElementById('meta').innerHTML = '<span class="empty">处理中…</span>';
+
+            // 检索 + 等第一个字可能要好几秒，几秒后换一句说明，别让人以为卡住了
+            let started = false;
+            const slowTip = setTimeout(() => {
+                if (!started) {
+                    ans.innerHTML = '<span class="spin"></span><span class="empty">' +
+                        '正在检索（知识图谱 → 本地知识库）并组织答案…</span>';
+                }
+            }, 4000);
+            const finish = () => {
+                clearTimeout(slowTip);
+                go.disabled = false; go.textContent = '提交查询';
+            };
+
+            /* 来源徽标：**只在没走知识图谱时出现**。
+               图谱命中是默认路径，界面保持原样（不要多余的技术提示）；
+               只有退到本地知识库、或由大模型直接生成时才提示一句 ——
+               这两种情况答案的依据确实不一样，看的人有权知道。 */
+            function routeChip(m) {
+                if (!m || !m.route || m.route === 'graph') return '';
+                var isKb = (m.route === 'local_kb');
+                var bg = isKb ? '#fff4e0' : '#f4f1ea';
+                var fg = isKb ? '#b26a00' : '#8a6d3b';
+                var tip = isKb ? '知识图谱未命中，本条依据本地知识库片段整理'
+                               : '知识图谱与本地知识库均未命中，本条由大模型依据通用农技常识生成';
+                return '<span class="chip" title="' + tip + '" style="background:' + bg +
+                       ';color:' + fg + '">来源：<b>' + esc(m.route_name || m.route) + '</b></span>';
+            }
+
+            function renderMeta(m) {
+                const srcs = m.sources || [];
+                /* 这里**不再显示**"大模型已组织语言 / 图谱事实直出"那枚徽标：
+                   用户不要这个技术提示，答案区只留方案类型、实体与溯源。 */
+                document.getElementById('meta').innerHTML =
+                    '<span class="chip">方案类型：<b>' + esc(m.plan_name || '农业知识问答') + '</b></span>' +
+                    '<span class="chip">识别实体：' + esc(entText(m.entities)) + '</span>' +
+                    '<span class="chip">溯源 ' + srcs.length + ' 条</span>' +
+                    routeChip(m);
+                showSources(srcs);
+                if (m.followups && m.followups.length) renderFollowups(m.followups);
+            }
+
+            const fd = new FormData();
+            fd.append('question', question);
+            fd.append('mode', mode === 'basic' ? 'basic' : 'advisor');
+
+            QAStream.run({
+                url: '/api/qa/stream',
+                body: fd,
+                onMeta: m => renderMeta(m),
+                // 边写边看：每收到一段就把累积到的全文重新渲染一次（已节流）
+                onDelta: txt => { started = true; ans.innerHTML = md2html(txt, true); },
+                onDone: d => {
+                    started = true;
+                    ans.innerHTML = md2html(d.answer || '（无结果）');
+                    renderMeta(d);
+                    fbShow(d.history_id);
+                    finish();
+                },
+                onError: msg => {
+                    ans.innerHTML = '<span class="empty">查询失败：' + esc(msg) + '</span>';
+                    finish();
+                },
+                // 服务端没给流式响应（或一个字都没收到就断了）→ 退回原来的一次性接口
+                fallback: () => {
+                    const fd2 = new FormData();
+                    fd2.append('question', question);
+                    if (mode !== 'basic') fd2.append('mode', 'auto');
+                    fetch((mode === 'basic') ? '/qa' : '/advisory',
+                          { method: 'POST', body: fd2 })
+                        .then(r => r.json()).then(d => {
+                            if (d.error) throw new Error(d.error);
+                            ans.innerHTML = md2html(d.answer || '（无结果）');
+                            renderMeta({
+                                plan_name: d.plan_name || '农业知识问答',
+                                entities: d.entities, sources: d.sources, followups: d.followups,
+                                route: d.route, route_name: d.route_name
+                            });
+                            fbShow(d.history_id);
+                        }).catch(e => {
+                            ans.innerHTML = '<span class="empty">查询失败：' + esc(e.message || '') + '</span>';
+                        }).finally(finish);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,382 @@
+{# ================================================================
+   四类处方共用一个页面，靠 URL 上的 ?mode= 决定进入时默认选中哪一类
+   （左侧导航的四个入口分别带 pest / fertilizer / farm / planning）
+   ================================================================ #}
+{% set _labels = {'auto':'自动识别', 'pest':'病虫害防治建议', 'fertilizer':'水肥调控处方',
+                  'farm':'农事管理方案', 'planning':'生产规划报告'} %}
+{% set _req = request.args.get('mode') %}
+{% set _m = _req if _req in _labels else 'auto' %}
+{% set _cur = _labels[_m] %}
+{% set _subs = {
+  'auto': '知识图谱 + 检索增强 + 大语言模型 · 一次提问，直接给出可落地的方案',
+  'pest': '先说清是什么病、什么虫，再按「农业防治 → 生物防治 → 物理防治 → 化学农药」的顺序给药',
+  'fertilizer': '按生育期拆解需肥结构，给出基肥 / 追肥 / 叶面肥的搭配与施用时机',
+  'farm': '把生育期时间轴摊开，每个阶段要做什么农事一目了然',
+  'planning': '按产区、土壤、温光水条件筛出适种作物组合与茬口安排'
+} %}
+{% set _phs = {
+  'auto': '例如：小麦条锈病怎么防治 / 番茄怎么施肥 / 水稻农事管理方案 / pH 6.5 年均温 18℃ 适合种什么',
+  'pest': '例如：小麦条锈病怎么防治 / 玉米地里有马唐怎么除 / 水稻稻飞虱用什么药',
+  'fertilizer': '例如：番茄怎么施肥 / 水稻追肥怎么配 / 玉米大喇叭口期施什么肥',
+  'farm': '例如：水稻的农事管理方案 / 小麦什么时候播种 / 玉米各生育期怎么管',
+  'planning': '例如：pH 6.5、年均温 18℃ 适合种什么 / 黄淮海平原适合种什么'
+} %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ _cur }} · 穗知未来</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;background:#f4f6f9;color:#1f2937;min-height:100vh}
+header{background:linear-gradient(100deg,#2F5597,#3f7d5f);color:#fff;padding:12px 22px;display:flex;align-items:baseline;gap:15px;flex-wrap:wrap}
+header h1{font-size:18px;font-weight:600}
+header span{font-size:12.5px;opacity:.88}
+header a{color:#fff;font-size:12.5px;text-decoration:none;border:1px solid rgba(255,255,255,.5);padding:3px 10px;border-radius:6px}
+header a:hover{background:rgba(255,255,255,.15)}
+.wrap{max-width:1180px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:13px}
+.panel{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(15,23,42,.08);padding:16px 18px}
+.row{display:flex;gap:9px}
+#q{flex:1;padding:11px 14px;border:1px solid #cbd5e1;border-radius:9px;font-size:14px;font-family:inherit;outline:none}
+#q:focus{border-color:#2F5597;box-shadow:0 0 0 3px rgba(47,85,151,.12)}
+#go{padding:11px 26px;border-radius:9px;border:none;background:#2F5597;color:#fff;font-size:14px;font-family:inherit;cursor:pointer}
+#go:hover{background:#26477c}
+#go:disabled{opacity:.6;cursor:not-allowed}
+.examples{margin-top:11px;font-size:12.5px;color:#6b7280;line-height:2.1}
+.examples b{color:#334155}
+.ex{display:inline-block;background:#eef3fb;color:#2F5597;border-radius:5px;padding:2px 9px;margin:2px 5px 2px 0;cursor:pointer;font-size:12px}
+.ex:hover{background:#dbe7f8}
+#meta{font-size:12.5px;color:#64748b;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.rep-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.rep-head .rep-t{font-size:13px;font-weight:600;color:#374151}
+.btn-export{margin-left:auto;padding:6px 14px;border:1px solid #2F5597;border-radius:8px;background:#fff;
+            color:#2F5597;font-size:12.5px;cursor:pointer;font-family:inherit}
+.btn-export:hover{background:#2F5597;color:#fff}
+.toast{position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(12px);z-index:999;
+        background:#256b45;color:#fff;font-size:13.5px;padding:11px 20px;border-radius:10px;
+        box-shadow:0 8px 24px rgba(15,23,42,.22);opacity:0;pointer-events:none;
+        transition:opacity .22s, transform .22s;max-width:80vw;line-height:1.6}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.chip{background:#f1f5f9;border-radius:6px;padding:3px 10px;color:#334155}
+.chip.ok{background:#e8f5ee;color:#256b45}
+.chip.warn{background:#fdf1e3;color:#9a5b12}
+#answer{font-size:14px;line-height:1.95}
+#answer h2{font-size:16px;color:#2F5597;margin:4px 0 10px}
+#answer h3{font-size:14px;color:#334155;margin:14px 0 7px;padding-left:8px;border-left:3px solid #3f7d5f}
+#answer ul,#answer ol{margin:6px 0 6px 20px}
+#answer li{margin:3px 0}
+#answer blockquote{background:#f7fafc;border-left:3px solid #cbd5e1;padding:8px 12px;margin:8px 0;color:#475569;font-size:13px;border-radius:0 6px 6px 0}
+#answer table{border-collapse:collapse;width:100%;margin:9px 0;font-size:13px}
+#answer th,#answer td{border:1px solid #e2e8f0;padding:6px 9px;text-align:left}
+#answer th{background:#f1f5f9;color:#334155;font-weight:600}
+#answer tr:nth-child(even) td{background:#fafcfe}
+#answer code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:13px}
+#srcs{font-size:12.5px;line-height:1.95;max-height:270px;overflow:auto}
+#srcs div{padding:2px 0;border-bottom:1px dashed #eef2f7;color:#475569}
+.empty{color:#94a3b8;font-size:13px}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #cbd5e1;border-top-color:#2F5597;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.two{display:grid;grid-template-columns:1fr 340px;gap:13px;align-items:start}
+@media(max-width:960px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+    {% include '_nav.html' %}
+<header>
+  <h1 id="pageTitle">{{ _cur }}</h1>
+  <span id="pageSub">{{ _subs[_m] }}</span>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="row">
+      <input id="q" placeholder="{{ _phs[_m] }}" autocomplete="off">
+      <button id="go">生成方案</button>
+    </div>
+    <div class="examples">
+      <b>试试：</b>
+      <span class="ex">小麦条锈病怎么防治</span>
+      <span class="ex">番茄怎么施肥</span>
+      <span class="ex">水稻的农事管理方案</span>
+      <span class="ex">pH 6.5、年均温 18℃ 适合种什么</span>
+      <span class="ex">黄淮海平原适合种什么</span>
+      <span class="ex">种大豆</span>
+      <span class="ex">玉米地里有马唐怎么除</span>
+    </div>
+  </div>
+
+  <div class="two">
+    <div class="panel">
+      <div class="rep-head">
+        <span class="rep-t">方案结果</span>
+        <button id="exportPdf" class="btn-export" onclick="exportPDF()"{% if _m != 'planning' %} style="display:none"{% endif %}>导出 PDF（选择保存位置）</button>
+      </div>
+      <div id="meta" style="margin-bottom:9px"><span class="empty">尚未生成，先提一个问题吧</span></div>
+      <div id="answer"><span class="empty">生成结果会显示在这里，包含分步骤做法与注意事项。</span></div>
+    </div>
+    <div class="panel">
+      <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:9px">
+        知识溯源 <span style="font-weight:400;color:#94a3b8;font-size:12px">（每条结论都可回溯到图谱关系）</span>
+      </div>
+      <div id="srcs"><span class="empty">暂无</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const MODE_LABEL = {{ _labels|tojson }};
+const MODE_SUB   = {{ _subs|tojson }};
+const MODE_PH    = {{ _phs|tojson }};
+let mode = '{{ _m }}';
+
+/* 切换处方类型：同步页面标题、输入框提示、左侧导航高亮，并把 mode 写回地址栏
+   —— 刷新或把链接发给别人时，打开的仍是同一类处方 */
+function applyMode(m){
+  mode = m;
+  document.getElementById('pageTitle').textContent = MODE_LABEL[m] || '自动识别';
+  document.getElementById('pageSub').textContent  = MODE_SUB[m]  || '';
+  document.getElementById('q').placeholder        = MODE_PH[m]   || '';
+  document.title = (MODE_LABEL[m] || '自动识别') + ' · 穗知未来';
+  document.querySelectorAll('.nav-item[data-mode]').forEach(
+    a => a.classList.toggle('on', a.dataset.mode === m));
+  var eb = document.getElementById('exportPdf');
+  if(eb) eb.style.display = (m === 'planning') ? 'inline-block' : 'none';
+  const url = new URL(location.href);
+  if(m === 'auto') url.searchParams.delete('mode'); else url.searchParams.set('mode', m);
+  history.replaceState(null, '', url);
+}
+document.querySelectorAll('.ex').forEach(el => el.onclick = () => {
+  document.getElementById('q').value = el.textContent;
+  run();
+});
+document.getElementById('q').addEventListener('keydown', e => { if(e.key === 'Enter') run(); });
+document.getElementById('go').onclick = run;
+
+/* ---------------------------------------------------- 轻量 Markdown 渲染 */
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function inline(s){
+  return esc(s)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+}
+function md2html(md){
+  const lines = md.split('\n'), out = [];
+  let inTable = false, inUl = false, inOl = false;
+  const closeList = () => {
+    if(inUl){ out.push('</ul>'); inUl = false; }
+    if(inOl){ out.push('</ol>'); inOl = false; }
+  };
+  lines.forEach(raw => {
+    const line = raw.replace(/\s+$/, '');
+    if(/^\s*\|/.test(line)){
+      closeList();
+      const cells = line.split('|').slice(1, -1).map(c => c.trim());
+      if(!inTable){
+        out.push('<table>');
+        out.push('<tr>' + cells.map(c => `<th>${inline(c)}</th>`).join('') + '</tr>');
+        inTable = true;
+      } else if(cells.every(c => /^:?-{2,}:?$/.test(c) || c === '')){
+        /* 分隔行，跳过 */
+      } else {
+        out.push('<tr>' + cells.map(c => `<td>${inline(c)}</td>`).join('') + '</tr>');
+      }
+      return;
+    }
+    if(inTable){ out.push('</table>'); inTable = false; }
+    if(/^###\s+/.test(line)){ closeList(); out.push(`<h3>${inline(line.replace(/^###\s+/,''))}</h3>`); return; }
+    if(/^##\s+/.test(line)){ closeList(); out.push(`<h2>${inline(line.replace(/^##\s+/,''))}</h2>`); return; }
+    if(/^#\s+/.test(line)){ closeList(); out.push(`<h2>${inline(line.replace(/^#\s+/,''))}</h2>`); return; }
+    if(/^>\s?/.test(line)){ closeList(); out.push(`<blockquote>${inline(line.replace(/^>\s?/,''))}</blockquote>`); return; }
+    if(/^\s*[-*]\s+/.test(line)){
+      if(!inUl){ closeList(); out.push('<ul>'); inUl = true; }
+      out.push(`<li>${inline(line.replace(/^\s*[-*]\s+/,''))}</li>`);
+      return;
+    }
+    if(/^\s*\d+[.、]\s+/.test(line)){
+      if(!inOl){ closeList(); out.push('<ol>'); inOl = true; }
+      out.push(`<li>${inline(line.replace(/^\s*\d+[.、]\s+/,''))}</li>`);
+      return;
+    }
+    if(!line.trim()){ closeList(); return; }
+    closeList();
+    out.push(`<p>${inline(line)}</p>`);
+  });
+  if(inTable) out.push('</table>');
+  closeList();
+  return out.join('\n');
+}
+
+/* 来源徽标：只在没走知识图谱时出现 —— 图谱命中是默认路径，界面保持原样；
+   退到本地知识库、或由大模型直接生成时，答案的依据确实不同，得让人看见。 */
+function routeChip(d){
+  if(!d || !d.route || d.route === 'graph') return '';
+  const isKb = (d.route === 'local_kb');
+  const bg   = isKb ? '#fff4e0' : '#f4f1ea';
+  const fg   = isKb ? '#b26a00' : '#8a6d3b';
+  const tip  = isKb ? '知识图谱未命中，本条依据本地知识库片段整理'
+                    : '知识图谱与本地知识库均未命中，本条由大模型依据通用农技常识生成';
+  return `<span class="chip" title="${tip}" style="background:${bg};color:${fg}">来源：<b>${esc(d.route_name || d.route)}</b></span>`;
+}
+
+/* ---------------------------------------------------- 请求 */
+function run(){
+  const q = document.getElementById('q').value.trim();
+  if(!q) return;
+  const go = document.getElementById('go');
+  go.disabled = true; go.textContent = '生成中…';
+  document.getElementById('answer').innerHTML = '<span class="spin"></span><span class="empty">正在检索知识图谱并生成方案…</span>';
+  document.getElementById('srcs').innerHTML = '<span class="empty">加载中…</span>';
+  document.getElementById('meta').innerHTML = '<span class="empty">处理中…</span>';
+
+  const fd = new FormData();
+  fd.append('question', q);
+  fd.append('mode', mode);
+  fetch('/advisory', {method:'POST', body: fd})
+    .then(r => r.json())
+    .then(d => {
+      const usedLLM = d.llm_used;
+      const ent = d.entities || {};
+      const entTxt = Object.keys(ent).length
+        ? Object.entries(ent).map(([k,v]) => `${k}:${v}`).join('　') : '无';
+      document.getElementById('meta').innerHTML =
+        `<span class="chip">方案类型：<b>${d.plan_name || '农业知识问答'}</b></span>` +
+        `<span class="chip ${usedLLM ? 'ok' : 'warn'}">${usedLLM ? ('大模型已润色：' + (d.llm_label || '') + (d.llm_model ? ' / ' + d.llm_model : '')) : '图谱结构化输出（未配置大模型）'}</span>` +
+        `<span class="chip">识别实体：${entTxt}</span>` +
+        `<span class="chip">溯源 ${((d.sources||[]).length)} 条</span>` +
+        routeChip(d);
+      document.getElementById('answer').innerHTML = md2html(d.answer || '（无结果）');
+      const srcs = d.sources || [];
+      document.getElementById('srcs').innerHTML = srcs.length
+        ? srcs.map(s => `<div>${esc(s)}</div>`).join('')
+        : '<span class="empty">本条回答未引用图谱关系</span>';
+        if(window.recordHistory) recordHistory('advisory', q, d.answer || '', {mode: mode}); /* HIST-ADV */
+    })
+    .catch(e => {
+      document.getElementById('answer').innerHTML = `<span class="empty">请求失败：${esc(e.message)}</span>`;
+    })
+    .finally(() => { go.disabled = false; go.textContent = '生成方案'; });
+}
+
+        /* 轻提示：右下角弹出一条消息，2.6 秒后自动消失 */
+        function showToast(msg){
+          var el = document.getElementById('toastBox');
+          if(!el){
+            el = document.createElement('div');
+            el.id = 'toastBox'; el.className = 'toast';
+            document.body.appendChild(el);
+          }
+          el.textContent = msg;
+          requestAnimationFrame(function(){ el.classList.add('show'); });
+          clearTimeout(el._t);
+          el._t = setTimeout(function(){ el.classList.remove('show'); }, 2600);
+        }
+
+        /* 导出 PDF：先在点击当下弹出「另存为」选好位置，再去服务端生成 PDF 并写入 */
+        function exportPDF(){
+          var metaEl = document.getElementById('meta');
+          var ansEl  = document.getElementById('answer');
+          var srcEl  = document.getElementById('srcs');
+          var btn    = document.getElementById('exportPdf');
+          if(!ansEl || !ansEl.innerHTML.trim() || ansEl.querySelector('.empty')){
+            alert('请先生成方案，再导出 PDF'); return;
+          }
+          var q = document.getElementById('q').value.trim();
+          var fname = '生产规划报告' + (q ? '-' + q.slice(0, 20) : '') + '.pdf';
+          fname = fname.replace(/[\\\/:*?"<>|]/g, '_');
+
+          /* 关键：showSaveFilePicker 必须在用户点击的手势内同步调用，
+             所以先弹窗选位置，再去生成 PDF（取消选择则直接中止） */
+          var pickerP = null;
+          if(window.showSaveFilePicker){
+            pickerP = window.showSaveFilePicker({
+                suggestedName: fname,
+                types: [{description: 'PDF 文档', accept: {'application/pdf': ['.pdf']}}]
+              }).then(function(h){ return {handle: h}; })
+                .catch(function(e){ return {cancel: !!(e && e.name === 'AbortError'), error: e}; });
+          }
+
+          var oldTxt = btn ? btn.textContent : '';
+          function fetchPDF(){
+            return fetch('/api/export/pdf', {method:'POST', headers:{'Content-Type':'application/json'},
+                      body: JSON.stringify({html: buildDocHTML(q, metaEl, ansEl, srcEl)})})
+              .then(function(r){
+                if(!r.ok){
+                  return r.json().then(function(d){ throw new Error((d && d.error) || ('HTTP ' + r.status)); });
+                }
+                return r.blob();
+              });
+          }
+          var busy = true;
+          if(btn){ btn.disabled = true; btn.textContent = '生成中…'; }
+
+          Promise.resolve(pickerP).then(function(pk){
+            if(pk && pk.cancel) return null;              /* 用户取消了另存为 */
+            if(pk && pk.error) throw pk.error;
+            return fetchPDF().then(function(blob){
+              if(pk && pk.handle){                        /* 写入用户选好的位置 */
+                return pk.handle.createWritable().then(function(w){
+                  return w.write(blob).then(function(){
+                    return w.close().then(function(){
+                      showToast('保存成功：' + (pk.handle.name || fname));
+                    });
+                  });
+                });
+              }
+              /* 浏览器不支持另存为 API：下载到默认下载目录 */
+              var url = URL.createObjectURL(blob);
+              var a = document.createElement('a');
+              a.href = url; a.download = fname;
+              document.body.appendChild(a); a.click(); a.remove();
+              setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+              showToast('已开始下载：' + fname);
+            });
+          }).catch(function(e){ alert('导出失败：' + (e && e.message ? e.message : e)); })
+            .then(function(){
+              if(btn){ btn.disabled = false; btn.textContent = oldTxt; }
+            });
+        }
+
+        /* 组装报告的独立 HTML 文档（带排版样式） */
+        function buildDocHTML(q, metaEl, ansEl, srcEl){
+          var css = 'body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;color:#1f2937;'
+            + 'padding:28px 34px;line-height:1.9;font-size:14px}'
+            + '.doc-head{border-bottom:2px solid #2F5597;padding-bottom:12px;margin-bottom:16px}'
+            + '.doc-head h1{font-size:20px;color:#2F5597;margin:0 0 6px}'
+            + '.doc-meta{font-size:12.5px;color:#64748b}'
+            + '#meta{font-size:12px;color:#64748b;display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}'
+            + '.chip{background:#f1f5f9;border-radius:6px;padding:3px 10px;color:#334155}'
+            + '.chip.ok{background:#e8f5ee;color:#256b45}.chip.warn{background:#fdf1e3;color:#9a5b12}'
+            + 'h2{font-size:16px;color:#2F5597;margin:14px 0 8px}'
+            + 'h3{font-size:14px;color:#334155;margin:12px 0 6px;padding-left:8px;border-left:3px solid #3f7d5f}'
+            + 'ul,ol{margin:6px 0 6px 20px}li{margin:3px 0}'
+            + 'blockquote{background:#f7fafc;border-left:3px solid #cbd5e1;padding:8px 12px;margin:8px 0;color:#475569;font-size:13px}'
+            + 'table{border-collapse:collapse;width:100%;margin:9px 0;font-size:13px}'
+            + 'th,td{border:1px solid #e2e8f0;padding:6px 9px;text-align:left}'
+            + 'th{background:#f1f5f9;font-weight:600}'
+            + 'tr:nth-child(even) td{background:#fafcfe}'
+            + 'code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:13px}'
+            + '.src-box{margin-top:24px;padding-top:12px;border-top:1px dashed #cbd5e1;font-size:12px;color:#475569}'
+            + '.src-box div{padding:2px 0}';
+          return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><style>' + css
+            + '</style></head><body>'
+            + '<div class="doc-head"><h1>生产规划报告</h1>'
+            + '<div class="doc-meta">提问：' + esc(q || '—') + '　·　生成时间：' + new Date().toLocaleString('zh-CN') + '</div></div>'
+            + '<div id="meta">' + metaEl.innerHTML + '</div>'
+            + '<div id="answer">' + ansEl.innerHTML + '</div>'
+            + '<div class="src-box"><b>知识溯源</b><div id="srcs">' + (srcEl ? srcEl.innerHTML : '') + '</div></div>'
+            + '</body></html>';
+        }
+
+        /* HIST-REPRO 历史复现：从 ?q= / ?mode= 自动复现上次提问 */
+        (function(){
+          var sp = new URLSearchParams(location.search);
+          var m = sp.get('mode');
+          if(m && MODE_LABEL[m]){ mode = m; applyMode(m); }
+          var q = sp.get('q');
+          if(q){ document.getElementById('q').value = q; run(); }
+        })();
+</script>
+</body>
+</html>

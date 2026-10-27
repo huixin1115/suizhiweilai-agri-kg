@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ title }} · 穗知未来</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;background:#f4f6f9;color:#1f2937}
+header{background:linear-gradient(100deg,#2F5597,#3f7d5f);color:#fff;padding:12px 22px;display:flex;align-items:baseline;gap:15px;flex-wrap:wrap}
+header h1{font-size:18px;font-weight:600}
+header span{font-size:12.5px;opacity:.88}
+.wrap{max-width:1240px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:13px}
+.panel{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(15,23,42,.08);padding:16px 18px}
+.panel h2{font-size:14px;font-weight:600;color:#374151;margin-bottom:12px}
+.row{display:flex;gap:9px;flex-wrap:wrap}
+input,select{font-family:inherit;font-size:14px;padding:10px 13px;border:1px solid #cbd5e1;border-radius:8px;outline:none;background:#fff;color:#1f2937}
+input:focus,select:focus{border-color:#2F5597;box-shadow:0 0 0 3px rgba(47,85,151,.12)}
+label{display:block;font-size:12.5px;color:#64748b;margin-bottom:5px}
+button{font-family:inherit;font-size:13.5px;padding:10px 20px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#334155;cursor:pointer;transition:.15s}
+button:hover{border-color:#2F5597;color:#2F5597}
+button.pri{background:#2F5597;border-color:#2F5597;color:#fff}
+button.pri:hover{background:#26477c;color:#fff}
+button:disabled{opacity:.55;cursor:not-allowed}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:11px}
+.examples{font-size:12.5px;color:#64748b;margin-top:11px}
+.examples b{color:#334155}
+.ex{display:inline-block;background:#eef3fb;color:#2F5597;border-radius:5px;padding:2px 9px;margin:2px 5px 2px 0;cursor:pointer;font-size:12px}
+.ex:hover{background:#dbe7f8}
+/* ---------------- 搜索框：一句话直接出方案 ----------------
+   放在输入区最上面，前面用虚线隔开 —— 它跟下面的精细条件是两个层次的入口：
+   懒得逐项选的人搜一句就走，要精确控制的人往下填。 */
+.sbox{display:flex;gap:8px;margin-bottom:14px;padding-bottom:13px;border-bottom:1px dashed #e2e8f0}
+.sbox input{flex:1 1 auto;min-width:0;padding-left:36px;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round'><circle cx='11' cy='11' r='7'/><path d='M20.5 20.5l-4.2-4.2'/></svg>");
+  background-repeat:no-repeat;background-position:12px center;background-size:16px}
+.sbox button{flex:0 0 auto;white-space:nowrap}
+#meta{font-size:12.5px;color:#64748b;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.chip{background:#f1f5f9;border-radius:6px;padding:3px 10px;color:#334155}
+.chip.ok{background:#e8f5ee;color:#256b45}
+.chip.warn{background:#fdf1e3;color:#9a5b12}
+.exp{margin-left:auto;display:flex;gap:6px}
+.exp button{font-size:12px;padding:4px 12px;border-radius:6px}
+#answer{font-size:14px;line-height:1.95}
+#answer h2{font-size:16px;color:#2F5597;margin:4px 0 10px}
+#answer h3{font-size:14px;color:#334155;margin:14px 0 7px;padding-left:8px;border-left:3px solid #3f7d5f}
+#answer ul,#answer ol{margin:6px 0 6px 20px}
+#answer li{margin:3px 0}
+#answer blockquote{background:#f7fafc;border-left:3px solid #cbd5e1;padding:8px 12px;margin:8px 0;color:#475569;font-size:13px;border-radius:0 6px 6px 0}
+#answer table{border-collapse:collapse;width:100%;margin:9px 0;font-size:13px}
+#answer th,#answer td{border:1px solid #e2e8f0;padding:6px 9px;text-align:left}
+#answer th{background:#f1f5f9;color:#334155;font-weight:600}
+#answer tr:nth-child(even) td{background:#fafcfe}
+#answer code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:13px}
+#srcs{font-size:12.5px;line-height:1.95;max-height:270px;overflow:auto}
+#srcs div{padding:2px 0;border-bottom:1px dashed #eef2f7;color:#475569}
+.empty{color:#94a3b8;font-size:13px}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #cbd5e1;border-top-color:#2F5597;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.two{display:grid;grid-template-columns:1fr 330px;gap:13px;align-items:start}
+@media(max-width:960px){.two{grid-template-columns:1fr}}
+/* ---------------- 用户反馈 ---------------- */
+.fb-head{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:10px}
+.fb-head b{font-size:13.5px;color:#374151}
+.fb-note{font-size:12px;color:#94a3b8}
+.fb-btn{font-family:inherit;font-size:13px;padding:7px 16px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#334155;cursor:pointer;transition:.15s}
+.fb-btn:hover{border-color:#2F5597;color:#2F5597;background:#fff}
+.fb-btn.on{border-color:#2F5597;background:#eef3fb;color:#2F5597;font-weight:600}
+.fb-extra{margin-top:11px}
+.fb-extra textarea{width:100%;height:62px;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;font-family:inherit;outline:none;resize:vertical;background:#fff}
+.fb-extra textarea:focus{border-color:#2F5597;box-shadow:0 0 0 3px rgba(47,85,151,.12)}
+.fb-actions{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+.fb-actions button{padding:7px 18px;font-size:13px}
+.fb-done{font-size:13px;color:#334155;line-height:1.9}
+</style>
+<script src="/static/qa_stream.js"></script>
+</head>
+<body>
+    {% include '_nav.html' %}
+<header>
+  <h1>{{ title }}</h1>
+  <span>{{ subtitle }}</span>
+</header>
+
+<div class="wrap">
+  <!-- ================= 输入区（按模式不同） ================= -->
+  <div class="panel">
+    {% if mode in ['pest', 'fertilizer', 'farm'] %}
+    {# 搜索入口：一句话 → 自动识别作物/病虫害 → 直接出方案。
+       识别不出来时才让人回到下面的下拉里挑，不用先教会他怎么选。 #}
+    <div class="sbox">
+      <input id="sbox" autocomplete="off"
+             placeholder="搜一句就行：小麦条锈病怎么防 · 番茄怎么施肥 · 水稻的农事管理方案">
+      <button class="pri" id="sbtn" type="button">搜索并生成</button>
+    </div>
+    {% endif %}
+    {% if mode == 'pest' %}
+      <div class="grid2">
+        <div>
+          <label>作物</label>
+          <select id="crop"><option value="">加载中…</option></select>
+        </div>
+        <div>
+          <label>病虫害 / 杂草（选填，不选则列出该作物全部）</label>
+          <select id="pest"><option value="">— 全部病虫害 —</option></select>
+        </div>
+      </div>
+      <div class="examples"><b>试试：</b>
+        <span class="ex" data-crop="小麦" data-pest="小麦条锈病">小麦条锈病</span>
+        <span class="ex" data-crop="玉米" data-pest="玉米大斑病">玉米大斑病</span>
+        <span class="ex" data-crop="水稻" data-pest="稻瘟病">水稻稻瘟病</span>
+        <span class="ex" data-crop="玉米" data-pest="马唐">玉米地里的马唐怎么除</span>
+      </div>
+
+    {% elif mode == 'fertilizer' %}
+      <label>作物</label>
+      <select id="crop"><option value="">加载中…</option></select>
+      <div class="examples"><b>试试：</b>
+        <span class="ex" data-crop="番茄">番茄怎么施肥</span>
+        <span class="ex" data-crop="小麦">小麦怎么施肥</span>
+        <span class="ex" data-crop="水稻">水稻怎么施肥</span>
+        <span class="ex" data-crop="苹果">苹果怎么施肥</span>
+      </div>
+
+    {% elif mode == 'farm' %}
+      <label>作物</label>
+      <select id="crop"><option value="">加载中…</option></select>
+      <div class="examples"><b>试试：</b>
+        <span class="ex" data-crop="水稻">水稻的农事管理方案</span>
+        <span class="ex" data-crop="小麦">小麦的农事管理方案</span>
+        <span class="ex" data-crop="玉米">玉米的农事管理方案</span>
+        <span class="ex" data-crop="马铃薯">马铃薯的农事管理方案</span>
+      </div>
+
+    {% elif mode == 'planning' %}
+      <div class="grid2">
+        <div><label>土壤 pH</label><input id="ph" placeholder="如 6.5"></div>
+        <div><label>年均温（℃）</label><input id="temp" placeholder="如 18"></div>
+        <div><label>年降水量（mm）</label><input id="rain" placeholder="如 600"></div>
+        <div>
+          <label>产区</label>
+          <input id="region" list="regionList" placeholder="选填，如 黄淮海平原">
+          <datalist id="regionList"></datalist>
+        </div>
+        <div>
+          <label>土壤类型</label>
+          <select id="soil"><option value="">不限</option></select>
+        </div>
+        <div>
+          <label>季节</label>
+          <select id="season">
+            <option value="">不限</option>
+            <option>春</option><option>夏</option><option>秋</option><option>冬</option>
+          </select>
+        </div>
+      </div>
+      <div class="examples"><b>试试：</b>
+        <span class="ex" data-ph="6.5" data-temp="18">pH 6.5、年均温 18℃</span>
+        <span class="ex" data-region="黄淮海平原">黄淮海平原适合种什么</span>
+        <span class="ex" data-soil="黑土" data-season="春">东北黑土春季种什么</span>
+      </div>
+    {% endif %}
+
+    <div class="row" style="margin-top:14px">
+      <button class="pri" id="go" onclick="run()">生成{{ title }}</button>
+      <span class="empty" style="align-self:center;font-size:12.5px" id="hint"></span>
+    </div>
+  </div>
+
+  <!-- ================= 结果区 ================= -->
+  <div class="two">
+    <div class="panel">
+      <div id="meta" style="margin-bottom:9px"><span class="empty">{{ placeholder }}</span></div>
+      <div id="answer"><span class="empty">生成结果会显示在这里。</span></div>
+    </div>
+    <div class="panel">
+      <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:9px">
+        知识溯源 <span style="font-weight:400;color:#94a3b8;font-size:12px">（可逐条复核）</span>
+      </div>
+      <div id="srcs"><span class="empty">暂无</span></div>
+    </div>
+  </div>
+
+  <!-- 用户反馈（出结果后才出现；数据库不可用时整块不显示） -->
+  <div class="panel" id="fb" style="display:none;margin-top:13px">
+    <div class="fb-head">
+      <b>这份方案对你有帮助吗？</b>
+      <span class="fb-note">你的评价会记进「历史记录」，用来改进这一类方案</span>
+    </div>
+    <div class="fb-btns" id="fbBtns">
+      <button class="fb-btn" id="fbUp" type="button">有帮助</button>
+      <button class="fb-btn" id="fbDown" type="button">没帮助</button>
+    </div>
+    <div class="fb-extra" id="fbExtra" style="display:none">
+      <textarea id="fbComment" placeholder="哪里不对？可以写下实际用的药 / 用量，或补充地块与品种情况（选填）"></textarea>
+      <div class="fb-actions">
+        <button class="pri" id="fbSend" type="button">提交反馈</button>
+        <span class="hint" id="fbHint">提交后可在「历史记录」里看到这条评价</span>
+      </div>
+    </div>
+    <div class="fb-done" id="fbDone" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const MODE = {{ mode|tojson }};
+const TITLE = {{ title|tojson }};
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+let lastResult = null;
+
+/* ---------------------------------------- 基础数据 */
+/* 两个都返回 Promise —— 搜索框要能在"列表就绪之后"再选值，
+   否则 option 还没渲染出来，赋值会被浏览器丢掉。 */
+function fillCrops(){
+  return fetch('/api/kg/crops').then(r => r.json()).then(list => {
+    if(!Array.isArray(list) || !list.length){ $('crop').innerHTML = '<option value="">暂无数据</option>'; return; }
+    const opts = list.map(c => `<option value="${esc(c.name)}">${esc(c.name)}${c.category ? '（' + esc(c.category) + '）' : ''}</option>`).join('');
+    $('crop').innerHTML = '<option value="">-- 请选择作物 --</option>' + opts;
+  }).catch(() => { $('crop').innerHTML = '<option value="">加载失败</option>'; });
+}
+
+function fillPests(crop){
+  const sel = $('pest');
+  if(!sel) return Promise.resolve();
+  if(!crop){ sel.innerHTML = '<option value="">— 全部病虫害 —</option>'; return Promise.resolve(); }
+  sel.innerHTML = '<option value="">加载中…</option>';
+  return fetch('/api/kg/pests?crop=' + encodeURIComponent(crop))
+    .then(r => r.json()).then(list => {
+      const opts = (list || []).map(p => `<option value="${esc(p.name)}">${esc(p.name)}（${esc(p.label)}）</option>`).join('');
+      sel.innerHTML = '<option value="">— 全部病虫害 —</option>' + opts;
+    }).catch(() => { sel.innerHTML = '<option value="">— 全部病虫害 —</option>'; });
+}
+
+/* ---------------------------------------- 搜索框 */
+/* 一句话 → 解析 → 填好条件 → 直接生成。
+   · 解析走后端 /api/advice/parse（复用顾问引擎的实体识别与意图判断，不另立一套规则）；
+   · 生成仍走原来的 run()，所以搜索出来的结果与手工选下拉一模一样
+     （同一套事实聚合、同样的提示词、同样会落历史记录）。 */
+const SEARCHABLE = ['pest', 'fertilizer', 'farm'];
+
+function submitSearch(q){
+  q = (q || '').trim();
+  if(!q) return;
+  const box = $('sbox'), btn = $('sbtn');
+  if(box) box.disabled = true;
+  if(btn){ btn.disabled = true; btn.textContent = '识别中…'; }
+  $('hint').textContent = '正在识别「' + q + '」…';
+
+  const done = () => {
+    if(box) box.disabled = false;
+    if(btn){ btn.disabled = false; btn.textContent = '搜索并生成'; }
+  };
+
+  fetch('/api/advice/parse', { method:'POST', body: new URLSearchParams({ q }) })
+    .then(r => r.json()).then(d => {
+      if(!d.ok){ done(); $('hint').textContent = d.message || '没识别出内容，请从下面的下拉里选'; return; }
+
+      /* 意图跟当前页面不是一回事（比如在防治页问"番茄怎么施肥"）→ 带着原句跳到对应页。
+         硬在本页生成一个不相关的东西，比跳一下更让人困惑。 */
+      if(d.intent && d.intent !== MODE && SEARCHABLE.indexOf(d.intent) >= 0){
+        location.href = '/advice/' + d.intent + '?q=' + encodeURIComponent(q);
+        return;
+      }
+      if(!d.crop){
+        done();
+        $('hint').innerHTML = (d.intent === 'planning')
+          ? '这更像生产规划的问题 —— 去 <a href="/advice/planning">「生产规划报告」</a> 按条件筛一遍'
+          : '没听出具体作物，换个说法试试（如「小麦条锈病怎么防」），或直接从下面的下拉里选';
+        return;
+      }
+
+      $('crop').value = d.crop;
+      if(MODE === 'pest'){
+        // 病虫害列表是跟着作物异步加载的，等它到位再选
+        fillPests(d.crop).then(() => {
+          if(d.pest){
+            /* ⚠ 先赋值再判断：select.value 赋一个 option 里没有的值会变成 ''，
+               所以"赋值前后是否相等"才是"这一项在不在下拉里"的判据。
+               反过来先比较（此时 value 还是旧值）会永远走"没找到"分支，从不赋值。 */
+            $('pest').value = d.pest;
+            if($('pest').value !== d.pest){
+              $('hint').textContent = '「' + d.crop + '」下没找到「' + d.pest + '」，已按全部病虫害生成';
+            }
+          }
+          done();
+          run();
+        });
+        return;
+      }
+      done();
+      run();
+    }).catch(e => { done(); $('hint').textContent = '识别失败：' + e.message; });
+}
+
+if(SEARCHABLE.indexOf(MODE) >= 0){
+  /* ⚠ 必须等作物列表到位再执行 ?q= —— 否则 $('crop').value 赋不进不存在的 option */
+  fillCrops().then(() => {
+    const q0 = new URLSearchParams(location.search).get('q');
+    if(!q0) return;
+    $('sbox').value = q0;
+    // 把 q 从地址栏抹掉：否则每次刷新都会重新生成一遍，还多落一条历史
+    try { history.replaceState(null, '', location.pathname); } catch(_) {}
+    submitSearch(q0);
+  });
+  const c = $('crop');
+  c.addEventListener('change', () => { if(MODE === 'pest') fillPests(c.value); });
+  $('sbtn').addEventListener('click', () => submitSearch($('sbox').value));
+  $('sbox').addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); submitSearch($('sbox').value); }
+  });
+}
+if(MODE === 'pest'){
+  fillPests('');
+  document.querySelectorAll('.ex[data-crop]').forEach(el => el.onclick = () => {
+    $('crop').value = el.dataset.crop;
+    fillPests(el.dataset.crop);
+    if(el.dataset.pest) setTimeout(() => { $('pest').value = el.dataset.pest; }, 350);
+    $('hint').textContent = '已选择示例，点「生成' + TITLE + '」查看结果';
+  });
+}
+if(MODE === 'fertilizer' || MODE === 'farm'){
+  document.querySelectorAll('.ex[data-crop]').forEach(el => el.onclick = () => {
+    $('crop').value = el.dataset.crop;
+    $('hint').textContent = '已选择示例，点「生成' + TITLE + '」查看结果';
+  });
+}
+if(MODE === 'planning'){
+  /* 土质 → 该土类典型 pH（图谱属性「酸碱度典型值」）。
+     选了土壤类型就自动把 pH 带上，农户可改成自己实测的值。 */
+  const SOIL_PH = {};
+  fetch('/api/soil/list').then(r => r.json()).then(list => {
+    (list || []).forEach(s => {
+      const n = Number(s.ph_value);
+      if(s.ph_value !== null && s.ph_value !== undefined && s.ph_value !== ''
+         && isFinite(n) && n >= 0 && n <= 14) SOIL_PH[s.name] = n;
+    });
+    $('soil').innerHTML = '<option value="">不限</option>' +
+      (list || []).map(s => `<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');
+  }).catch(() => {});
+  $('soil').addEventListener('change', () => {
+    const v = SOIL_PH[$('soil').value];
+    if(v === undefined) return;
+    $('ph').value = v.toFixed(1);
+    $('hint').textContent = '已按「' + $('soil').value + '」带入典型土壤 pH ' + v.toFixed(1) +
+                            '（土类参考值，有实测值可直接改）';
+  });
+  fetch('/api/kg/regions').then(r => r.json()).then(list => {
+    $('regionList').innerHTML = (list || []).map(r => `<option value="${esc(r.name)}"></option>`).join('');
+  }).catch(() => {});
+  document.querySelectorAll('.ex[data-ph], .ex[data-region], .ex[data-soil]').forEach(el => el.onclick = () => {
+    if(el.dataset.ph) $('ph').value = el.dataset.ph;
+    if(el.dataset.temp) $('temp').value = el.dataset.temp;
+    if(el.dataset.region) $('region').value = el.dataset.region;
+    if(el.dataset.soil) $('soil').value = el.dataset.soil;
+    if(el.dataset.season) $('season').value = el.dataset.season;
+    $('hint').textContent = '已填入示例条件，点「生成' + TITLE + '」查看结果';
+  });
+}
+
+/* ---------------------------------------- 组装参数并请求 */
+function collect(){
+  const p = {mode: MODE};
+  if(MODE === 'pest'){ p.crop = $('crop').value; p.pest = $('pest').value; }
+  else if(MODE === 'fertilizer' || MODE === 'farm'){ p.crop = $('crop').value; }
+  else if(MODE === 'planning'){
+    p.ph = $('ph').value; p.temp = $('temp').value; p.rain = $('rain').value;
+    p.region = $('region').value; p.soil = $('soil').value; p.season = $('season').value;
+  }
+  return p;
+}
+
+/* ---------------------------------------- 用户反馈 */
+/* 每次出结果后后端会带回 history_id；没有它（数据库不可用）就整块不显示 */
+let fbId = null;
+
+function fbReset(){
+  fbId = null;
+  $('fb').style.display = 'none';
+  $('fbBtns').style.display = '';
+  $('fbExtra').style.display = 'none';
+  $('fbDone').style.display = 'none';
+  $('fbComment').value = '';
+  $('fbHint').textContent = '提交后可在「历史记录」里看到这条评价';
+  $('fbUp').classList.remove('on');
+  $('fbDown').classList.remove('on');
+  $('fbSend').disabled = false;
+  $('fbSend').textContent = '提交反馈';
+}
+
+function fbShow(hid){
+  fbReset();
+  if(!hid) return;
+  fbId = hid;
+  $('fb').style.display = '';
+}
+
+function fbSubmit(rating, btn){
+  if(!fbId) return;
+  const comment = ($('fbComment').value || '').trim();
+  if(btn){ btn.disabled = true; btn.textContent = '提交中…'; }
+  fetch('/api/history/' + fbId + '/feedback', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({rating: rating, comment: comment})
+  }).then(r => r.json()).then(d => {
+    if(!d.ok) throw new Error(d.message || '提交失败');
+    $('fbBtns').style.display = 'none';
+    $('fbExtra').style.display = 'none';
+    $('fbDone').style.display = '';
+    $('fbDone').innerHTML = rating === 'helpful'
+      ? '<span class="chip ok">已记录：有帮助</span>　谢谢，这条评价已存入历史记录'
+      : '<span class="chip warn">已记录：没帮助</span>　谢谢指出，我们会据此修正这类方案';
+  }).catch(e => {
+    $('fbHint').textContent = '提交失败：' + e.message;
+    if(btn){ btn.disabled = false; btn.textContent = '重试'; }
+  });
+}
+
+$('fbUp').addEventListener('click', () => fbSubmit('helpful', null));
+$('fbDown').addEventListener('click', () => {
+  $('fbUp').classList.remove('on');
+  $('fbDown').classList.add('on');
+  $('fbExtra').style.display = '';
+  $('fbComment').focus();
+});
+$('fbSend').addEventListener('click', function(){ fbSubmit('unhelpful', this); });
+
+function run(){
+  const params = collect();
+  const need = MODE === 'planning'
+    ? ['ph','temp','rain','region','soil','season'].some(k => String(params[k] || '').trim())
+    : String(params.crop || '').trim();
+  if(!need){ alert(MODE === 'planning' ? '请至少填写一个条件' : '请先选择作物'); return; }
+
+  const go = $('go');
+  go.disabled = true; go.textContent = '生成中…';
+  fbReset();
+  $('answer').innerHTML = '<span class="spin"></span><span class="empty">正在检索知识图谱并生成…</span>';
+  $('srcs').innerHTML = '<span class="empty">加载中…</span>';
+  $('meta').innerHTML = '<span class="empty">处理中…</span>';
+
+  const finish = () => { go.disabled = false; go.textContent = '生成' + TITLE; };
+
+  /* 溯源与标题栏：检索一结束就显示，不必等大模型把整篇写完 */
+  function renderMeta(m){
+    const srcs = m.sources || [];
+    const ent = m.entities || {};
+    const entTxt = Object.keys(ent).length ? Object.entries(ent).map(([k,v]) => `${k}:${v}`).join('　') : '无';
+    $('meta').innerHTML =
+      `<span class="chip">方案类型：<b>${esc(m.plan_name || TITLE)}</b></span>` +
+      `<span class="chip">识别实体：${esc(entTxt)}</span>` +
+      `<span class="chip">溯源 ${srcs.length} 条</span>` +
+      `<span class="exp">
+         <button onclick="exportDoc('docx')">导出 Word</button>
+         <button onclick="exportDoc('pdf')">导出 PDF</button>
+       </span>`;
+    $('srcs').innerHTML = srcs.length ? srcs.map(s => `<div>${esc(s)}</div>`).join('')
+      : '<span class="empty">本条回答未引用图谱关系</span>';
+  }
+
+  function takeResult(d){
+    if(d.error) throw new Error(d.error);
+    lastResult = d;                       // 导出要用，流式结束也得存一份
+    $('answer').innerHTML = md2html(d.answer || '（无结果）');
+    renderMeta(d);
+    fbShow(d.history_id);
+  }
+
+  QAStream.run({
+    url: '/api/advice',
+    body: JSON.stringify(Object.assign({}, params, {stream: 1})),
+    headers: {'Content-Type':'application/json'},
+    onMeta: renderMeta,
+    onDelta: txt => { $('answer').innerHTML = md2html(txt, true); },
+    onDone:  d => { takeResult(d); finish(); },
+    onError: msg => { $('answer').innerHTML = `<span class="empty">${esc(msg)}</span>`; finish(); },
+    // 服务端没给流式响应 → 退回一次性接口（老行为，功能不丢）
+    fallback: () => {
+      fetch('/api/advice', {method:'POST', headers:{'Content-Type':'application/json'},
+                            body: JSON.stringify(params)})
+        .then(r => r.json())
+        .then(takeResult)
+        .catch(e => { $('answer').innerHTML = `<span class="empty">请求失败：${esc(e.message)}</span>`; })
+        .finally(finish);
+    }
+  });
+}
+
+/* ---------------------------------------- 导出 */
+function exportDoc(fmt){
+  if(!lastResult){ alert('请先生成方案'); return; }
+  const btns = document.querySelectorAll('.exp button');
+  btns.forEach(b => b.disabled = true);
+  const fd = new FormData();
+  fd.append('title', lastResult.plan_name || TITLE);
+  fd.append('markdown', lastResult.answer || lastResult.structured || '');
+  fd.append('sources', (lastResult.sources || []).join('\n'));
+  const ent = lastResult.entities || {};
+  fd.append('crop', ent['作物'] || '');
+  fetch('/api/export/' + fmt, {method:'POST', body: fd})
+    .then(r => {
+      if(!r.ok) return r.json().then(d => { throw new Error(d.message || ('HTTP ' + r.status)); });
+      const cd = r.headers.get('Content-Disposition') || '';
+      let name = TITLE + '.' + fmt;
+      const m = /filename\*=UTF-8''([^;]+)/i.exec(cd) || /filename="?([^";]+)"?/i.exec(cd);
+      if(m){ try { name = decodeURIComponent(m[1]); } catch(e) { name = m[1]; } }
+      return r.blob().then(b => ({blob: b, name: name}));
+    })
+    .then(({blob, name}) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1200);
+    })
+    .catch(e => alert('导出失败：' + e.message))
+    .finally(() => btns.forEach(b => b.disabled = false));
+}
+
+/* ---------------------------------------- Markdown 渲染 */
+function md2html(md, partial){
+  let text = md || '';
+  if(partial){
+    // 流式中间态：补上没写完的 ** 标记、丢掉还没写完整的表格行，免得渲染时闪
+    if(((text.match(/\*\*/g) || []).length) % 2) text += '**';
+    const ls = text.split('\n');
+    if(ls.length && /^\s*\|/.test(ls[ls.length - 1])) { ls.pop(); text = ls.join('\n'); }
+  }
+  const inline = s => esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  const out = [];
+  let inUl = false, inOl = false, inTable = false, firstRow = false;
+  const closeList = () => { if(inUl){out.push('</ul>');inUl=false;} if(inOl){out.push('</ol>');inOl=false;} };
+  const closeTable = () => { if(inTable){out.push('</tbody></table>');inTable=false;} };
+  const cells = line => line.replace(/^\||\|$/g,'').split('|').map(c => c.trim());
+  text.split('\n').forEach(raw => {
+    const line = raw.replace(/\s+$/,'');
+    if(/^\|/.test(line) && /^\|?[\s:|-]+\|[\s:|-]*$/.test(line)) return;
+    if(/^\|/.test(line)){
+      closeList();
+      if(!inTable){ out.push('<table><tbody>'); inTable = true; firstRow = true; }
+      const tag = firstRow ? 'th' : 'td';
+      out.push('<tr>' + cells(line).map(c => `<${tag}>${inline(c)}</${tag}>`).join('') + '</tr>');
+      firstRow = false;
+      return;
+    }
+    closeTable();
+    if(/^#{1,3}\s+/.test(line)){ closeList(); out.push(`<h2>${inline(line.replace(/^#{1,3}\s+/,''))}</h2>`); return; }
+    if(/^>\s?/.test(line)){ closeList(); out.push(`<blockquote>${inline(line.replace(/^>\s?/,''))}</blockquote>`); return; }
+    if(/^\s*[-*]\s+/.test(line)){
+      if(!inUl){ closeList(); out.push('<ul>'); inUl = true; }
+      out.push(`<li>${inline(line.replace(/^\s*[-*]\s+/,''))}</li>`); return;
+    }
+    if(/^\s*\d+[.、]\s+/.test(line)){
+      if(!inOl){ closeList(); out.push('<ol>'); inOl = true; }
+      out.push(`<li>${inline(line.replace(/^\s*\d+[.、]\s+/,''))}</li>`); return;
+    }
+    if(!line.trim()){ closeList(); return; }
+    closeList();
+    out.push(`<p>${inline(line)}</p>`);
+  });
+  closeList(); closeTable();
+  return out.join('\n');
+}
+
+/* ---------------------------------------- 模型状态 */
+/* 界面上不再显示大模型是否就绪与自检按钮（页面里不出现模型名 / 厂商名）。
+   需要自检时走接口：GET /api/llm/status 看配置，POST /api/llm/test 真发一次请求。 */
+</script>
+</body>
+</html>
