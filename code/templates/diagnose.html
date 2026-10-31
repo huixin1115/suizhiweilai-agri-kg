@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>拍照识别病虫害</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;background:#f4f6f9;color:#1f2937}
+header{background:linear-gradient(100deg,#2F5597,#3f7d5f);color:#fff;padding:12px 22px;display:flex;align-items:baseline;gap:15px;flex-wrap:wrap}
+header h1{font-size:18px;font-weight:600}
+header span{font-size:12.5px;opacity:.88}
+header a{color:#fff;font-size:12.5px;text-decoration:none;border:1px solid rgba(255,255,255,.5);padding:3px 10px;border-radius:6px}
+header a:hover{background:rgba(255,255,255,.15)}
+.wrap{max-width:1320px;margin:0 auto;padding:16px;display:grid;grid-template-columns:400px 1fr;gap:14px;align-items:start}
+@media(max-width:1020px){.wrap{grid-template-columns:1fr}}
+.panel{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(15,23,42,.08);padding:15px 17px}
+.panel h2{font-size:14px;font-weight:600;color:#374151;margin-bottom:12px}
+label{display:block;font-size:12.5px;color:#64748b;margin:10px 0 4px}
+input,textarea{width:100%;padding:8px 11px;border:1px solid #cbd5e1;border-radius:7px;font-size:13.5px;font-family:inherit;outline:none;background:#fff}
+input:focus,textarea:focus{border-color:#2F5597;box-shadow:0 0 0 3px rgba(47,85,151,.12)}
+textarea{resize:vertical;min-height:64px}
+button{font-family:inherit;font-size:13px;padding:8px 16px;border-radius:7px;border:1px solid #cbd5e1;background:#fff;color:#334155;cursor:pointer}
+button:hover{border-color:#2F5597;color:#2F5597}
+button.pri{background:#2F5597;border-color:#2F5597;color:#fff}
+button.pri:hover{background:#26477c;color:#fff}
+button:disabled{opacity:.55;cursor:not-allowed}
+.full{width:100%;margin-top:14px}
+#drop{border:2px dashed #cbd5e1;border-radius:10px;padding:26px 14px;text-align:center;cursor:pointer;transition:.15s;background:#fbfdff}
+#drop:hover,#drop.over{border-color:#2F5597;background:#eef3fb}
+#drop .big{font-size:26px;color:#94a3b8;line-height:1.2}
+#drop .t1{font-size:13.5px;color:#334155;margin-top:8px}
+#drop .t2{font-size:12px;color:#94a3b8;margin-top:4px}
+#preview{display:none;margin-top:11px;text-align:center}
+#preview img{max-width:100%;max-height:280px;border-radius:8px;border:1px solid #e2e8f0}
+#previewInfo{font-size:11.5px;color:#94a3b8;margin-top:6px}
+.hint{font-size:11.5px;color:#94a3b8;line-height:1.7;margin-top:9px}
+.notice{background:#fdf3e3;color:#96631a;border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.8;margin-bottom:11px}
+.notice code{background:#fff;padding:1px 5px;border-radius:4px;font-size:12px}
+.empty{color:#94a3b8;font-size:13px;padding:8px 0}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #cbd5e1;border-top-color:#2F5597;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.tag{display:inline-block;border-radius:5px;padding:2px 9px;font-size:11.5px;margin:2px 5px 2px 0}
+.tag.blue{background:#eef3fb;color:#2F5597}
+.tag.green{background:#e9f5ee;color:#2b6b47}
+.tag.red{background:#fdecec;color:#b3261e}
+.tag.amber{background:#fdf3e3;color:#96631a}
+.tag.gray{background:#f1f5f9;color:#64748b}
+.kv{font-size:13px;line-height:1.9;color:#334155}
+.kv span{color:#94a3b8}
+.big-name{font-size:19px;font-weight:600;color:#2F5597}
+.sect{margin-top:15px;padding-top:13px;border-top:1px solid #eef2f7}
+.sect h3{font-size:13.5px;color:#2F5597;margin-bottom:8px;font-weight:600}
+#advice{font-size:14px;line-height:1.95}
+#advice h2{font-size:16px;color:#2F5597;margin:3px 0 9px}
+#advice h3{font-size:14px;color:#334155;margin:12px 0 6px;padding-left:8px;border-left:3px solid #3f7d5f}
+#advice ul,#advice ol{margin:6px 0 6px 20px}
+#advice blockquote{background:#f7fafc;border-left:3px solid #cbd5e1;padding:8px 12px;margin:8px 0;color:#475569;font-size:13px;border-radius:0 6px 6px 0}
+#advice code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:13px}
+#srcs{font-size:12.5px;line-height:1.95;max-height:220px;overflow:auto}
+#srcs div{padding:2px 0;border-bottom:1px dashed #eef2f7;color:#475569}
+.cand{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 9px;border-radius:6px;background:#f8fafc;margin:3px 0}
+.cand b{color:#334155}
+.cand .sc{color:#94a3b8}
+.disc{font-size:11.5px;color:#94a3b8;line-height:1.8;margin-top:13px;padding-top:11px;border-top:1px dashed #eef2f7}
+</style>
+</head>
+<body>
+    {% include '_nav.html' %}
+<header>
+  <h1>拍照识别病虫害</h1>
+  <span>上传作物照片 → 识别病虫害 → 直接给防治方案</span>
+</header>
+
+<div class="wrap">
+  <div>
+    <div class="panel">
+      <h2>上传照片</h2>
+      <div id="drop">
+        <div class="big">+</div>
+        <div class="t1">点击选择照片，或把图片拖到这里</div>
+        <div class="t2">支持 JPG / PNG / WEBP，单张不超过 <span id="maxMb">8</span> MB</div>
+      </div>
+      <input type="file" id="file" accept="image/*" style="display:none">
+      <div id="preview">
+        <img id="previewImg" alt="预览">
+        <div id="previewInfo"></div>
+        <button class="sm" style="margin-top:7px" onclick="clearImage()">移除照片</button>
+      </div>
+
+      <label>作物（选填，能提高识别准确率）</label>
+      <input id="crop" placeholder="例如：小麦" autocomplete="off">
+      <label>补充描述（选填）</label>
+      <textarea id="description" placeholder="例如：叶片上有黄色长条斑、边缘枯焦，这几天阴雨"></textarea>
+      <button class="pri full" id="go" onclick="submit()">开始识别</button>
+      <div class="hint">原图只在内存中处理、不保存到服务器；为便于以后回顾，会另存一张压缩后的
+        缩略图随本次记录进「历史记录」（删记录时一并删除）。识别结果仅供田间参考，
+        重大病虫害请以当地植保部门鉴定为准。</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel" id="resultPanel">
+      <h2 id="resultTitle">识别结果</h2>
+      <div id="result"><div class="empty">上传照片后点「开始识别」，这里会显示识别结论、图谱对齐结果与防治方案。</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+let pickedFile = null;
+
+/* ---------------------------------------- 上传限制 */
+/* 页面上不再显示视觉模型的接入状态（界面上不出现模型名 / 厂商名），
+   只从接口同步"最大上传体积"这一个数字。
+   需要确认模型是否配好时走接口：GET /api/vision/status */
+fetch('/api/vision/status').then(r => r.json()).then(d => {
+  if(d.error) return;
+  if(d.max_upload_mb) $('maxMb').textContent = d.max_upload_mb;
+}).catch(() => {});
+
+/* ---------------------------------------- 选图与预览 */
+$('drop').onclick = () => $('file').click();
+$('file').onchange = e => { if(e.target.files[0]) setImage(e.target.files[0]); };
+['dragenter','dragover'].forEach(ev => $('drop').addEventListener(ev, e => {
+  e.preventDefault(); $('drop').classList.add('over');
+}));
+['dragleave','drop'].forEach(ev => $('drop').addEventListener(ev, e => {
+  e.preventDefault(); $('drop').classList.remove('over');
+}));
+$('drop').addEventListener('drop', e => {
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if(f) setImage(f);
+});
+window.addEventListener('paste', e => {
+  const items = e.clipboardData && e.clipboardData.items;
+  if(!items) return;
+  for(const it of items){
+    if(it.type.indexOf('image') === 0){
+      const f = it.getAsFile();
+      if(f) setImage(f);
+      break;
+    }
+  }
+});
+
+function setImage(f){
+  if(f.type.indexOf('image') !== 0){ alert('请选择图片文件'); return; }
+  pickedFile = f;
+  const url = URL.createObjectURL(f);
+  $('previewImg').src = url;
+  $('preview').style.display = 'block';
+  $('previewInfo').textContent = `${f.name} · ${(f.size/1024/1024).toFixed(2)} MB（可直接粘贴截图）`;
+}
+function clearImage(){
+  pickedFile = null;
+  $('file').value = '';
+  $('preview').style.display = 'none';
+  $('previewImg').src = '';
+}
+
+/* ---------------------------------------- 提交识别 */
+function submit(){
+  const desc = $('description').value.trim();
+  if(!pickedFile && !desc){
+    alert('请上传照片，或填写症状描述');
+    return;
+  }
+  const btn = $('go');
+  btn.disabled = true; btn.textContent = '识别中…';
+  $('result').innerHTML = '<span class="spin"></span><span class="empty">正在识别，请稍候…</span>';
+  $('resultTitle').textContent = '识别结果';
+
+  const fd = new FormData();
+  if(pickedFile) fd.append('image', pickedFile);
+  fd.append('crop', $('crop').value.trim());
+  fd.append('description', desc);
+
+  fetch('/api/diagnose', {method:'POST', body: fd})
+    .then(r => r.json())
+    .then(d => { render(d); markRecorded(d); })
+    .catch(e => { $('result').innerHTML = `<div class="empty">请求失败：${esc(e.message)}</div>`; })
+    .finally(() => { btn.disabled = false; btn.textContent = '开始识别'; });
+}
+
+/* 识别完顺手说一声"这条已经记进历史了"，并给个回看入口 ——
+   不然农户根本不知道拍过的照片、识别结论都被留下来了 */
+function markRecorded(d){
+  const tip = document.createElement('div');
+  tip.className = 'sect';
+  tip.innerHTML = d.history_id
+    ? '<div class="hint">已记入「<a href="/history-page" style="color:#2F5597">历史记录</a>」'
+      + '（含这张照片的缩略图），以后想回顾不用再翻手机相册。</div>'
+    : '<div class="hint">本次结果没能记进历史记录（数据库不可用），不影响上面的识别结论。</div>';
+  $('result').appendChild(tip);
+}
+
+/* ---------------------------------------- 结果渲染 */
+function md2html(md){
+  const inline = s => esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  const out = [];
+  let inUl = false, inOl = false;
+  const closeList = () => { if(inUl){out.push('</ul>');inUl=false;} if(inOl){out.push('</ol>');inOl=false;} };
+  md.split('\n').forEach(raw => {
+    const line = raw.replace(/\s+$/, '');
+    if(/^#{1,3}\s+/.test(line)){ closeList(); out.push(`<h2>${inline(line.replace(/^#{1,3}\s+/,''))}</h2>`); return; }
+    if(/^>\s?/.test(line)){ closeList(); out.push(`<blockquote>${inline(line.replace(/^>\s?/,''))}</blockquote>`); return; }
+    if(/^\s*[-*]\s+/.test(line)){
+      if(!inUl){ closeList(); out.push('<ul>'); inUl = true; }
+      out.push(`<li>${inline(line.replace(/^\s*[-*]\s+/,''))}</li>`); return;
+    }
+    if(/^\s*\d+[.、]\s+/.test(line)){
+      if(!inOl){ closeList(); out.push('<ol>'); inOl = true; }
+      out.push(`<li>${inline(line.replace(/^\s*\d+[.、]\s+/,''))}</li>`); return;
+    }
+    if(!line.trim()){ closeList(); return; }
+    closeList();
+    out.push(`<p>${inline(line)}</p>`);
+  });
+  closeList();
+  return out.join('\n');
+}
+
+function render(d){
+  if(!d.ok){
+    let h = `<div class="notice">${esc(d.message || '识别失败')}</div>`;
+    if(d.need_vision){
+      h += `<div class="empty">配置好视觉模型后，这里会显示：识别结论 → 图谱对齐 → 防治方案。</div>`;
+    }
+    $('result').innerHTML = h;
+    return;
+  }
+
+  const raw = d.raw || {};
+  let h = '';
+
+  if(d.mode === 'text'){
+    $('resultTitle').textContent = '按文字描述给出的防治建议';
+    h += `<div class="kv">已根据你描述的症状在图谱中检索匹配。</div>`;
+    h += `<div class="sect"><h3>防治建议</h3><div id="advice">${md2html(d.advice || '')}</div></div>`;
+    if((d.sources || []).length){
+      h += `<div class="sect"><h3>知识溯源（${d.sources.length} 条）</h3><div id="srcs">` +
+        d.sources.map(s => `<div>${esc(s)}</div>`).join('') + `</div></div>`;
+    }
+    h += `<div class="disc">${esc(d.disclaimer || '')}</div>`;
+    $('result').innerHTML = h;
+    return;
+  }
+
+  $('resultTitle').textContent = '识别结果';
+  // 1. 识别结论
+  if(raw.text){
+    h += `<div class="kv">模型原始返回：<br>${esc(raw.text)}</div>`;
+  } else {
+    const conf = raw.confidence || '';
+    const confCls = conf === '高' ? 'green' : (conf === '中' ? 'amber' : 'gray');
+    h += `<div class="kv" style="margin-bottom:7px">
+      <span>识别到：</span><span class="big-name">${esc(raw.problem || '未识别出病虫害')}</span>
+    </div>`;
+    h += `<div style="margin-bottom:8px">
+      ${raw.crop ? `<span class="tag blue">作物：${esc(raw.crop)}</span>` : ''}
+      ${raw.category ? `<span class="tag ${raw.category === '健康' ? 'green' : 'red'}">${esc(raw.category)}</span>` : ''}
+      ${conf ? `<span class="tag ${confCls}">置信度：${esc(conf)}</span>` : ''}
+    </div>`;
+    if(raw.evidence){
+      h += `<div class="kv"><span>判断依据：</span>${esc(raw.evidence)}</div>`;
+    }
+    if((raw.alternatives || []).length){
+      h += `<div class="kv"><span>其他可能：</span>${raw.alternatives.map(a => esc(a)).join('、')}</div>`;
+    }
+    if(raw.note){
+      h += `<div class="kv"><span>模型补充：</span>${esc(raw.note)}</div>`;
+    }
+    if(d.image_size){
+      h += `<div class="kv" style="font-size:12px;color:#94a3b8">图片已压缩至
+        ${d.image_size.width}×${d.image_size.height} 送模型（原图 ${d.image_size.original.width}×${d.image_size.original.height}）</div>`;
+    }
+  }
+
+  // 2. 图谱对齐
+  if(d.matched){
+    h += `<div class="sect"><h3>图谱对齐</h3>
+      <div class="kv">已对齐到图谱实体：
+        <span class="tag green">${esc(d.matched.name)}</span>
+        <span class="tag gray">${esc(d.matched.label)}</span>
+        <span style="font-size:12px;color:#94a3b8">相似度 ${d.matched.score}</span>
+      </div>`;
+    if((d.candidates || []).length > 1){
+      h += `<div style="margin-top:7px;font-size:12px;color:#94a3b8">其他候选：</div>` +
+        d.candidates.slice(0, 5).map(c =>
+          `<div class="cand"><b>${esc(c.name)}</b><span class="sc">${esc(c.label)} · ${c.score}</span></div>`).join('');
+    }
+    h += `</div>`;
+  } else if((d.candidates || []).length){
+    h += `<div class="sect"><h3>图谱对齐</h3><div class="kv">未找到高置信匹配，候选如下：</div>` +
+      d.candidates.map(c => `<div class="cand"><b>${esc(c.name)}</b><span class="sc">${esc(c.label)} · ${c.score}</span></div>`).join('') +
+      `</div>`;
+  }
+
+  // 3. 防治方案
+  if(d.advice){
+    h += `<div class="sect"><h3>防治方案（来自知识图谱）</h3><div id="advice">${md2html(d.advice)}</div></div>`;
+  }
+  if((d.sources || []).length){
+    h += `<div class="sect"><h3>知识溯源（${d.sources.length} 条）</h3><div id="srcs">` +
+      d.sources.map(s => `<div>${esc(s)}</div>`).join('') + `</div></div>`;
+  }
+  if(d.message && d.message !== '识别完成'){
+    h += `<div class="sect"><div class="notice">${esc(d.message)}</div></div>`;
+  }
+  h += `<div class="disc">${esc(d.disclaimer || '')}</div>`;
+  $('result').innerHTML = h;
+}
+</script>
+</body>
+</html>

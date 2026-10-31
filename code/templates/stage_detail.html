@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ '地块详情' if mode == 'plot' else '作物详情' }} · 物候期提醒</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;background:#f4f6f9;color:#1f2937}
+.topbar{background:#fff;border-bottom:1px solid #e6ebf2;padding:11px 22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.topbar a.back{font-size:13px;color:#2F5597;text-decoration:none;border:1px solid #cbd5e1;border-radius:7px;padding:5px 12px}
+.topbar a.back:hover{border-color:#2F5597;background:#eef3fb}
+.topbar h1{font-size:16px;font-weight:600}
+.topbar .crumb{font-size:12.5px;color:#94a3b8}
+.wrap{max-width:1180px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:13px}
+.panel{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(15,23,42,.08);padding:16px 18px}
+/* ---------------- 顶部大图 ---------------- */
+.hero{position:relative;height:280px;border-radius:12px;overflow:hidden;background:#e8eef6;box-shadow:0 1px 3px rgba(15,23,42,.08)}
+.hero img{width:100%;height:100%;object-fit:cover;display:block}
+.hero .mask{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,23,42,.05) 30%,rgba(15,23,42,.72))}
+.hero .txt{position:absolute;left:22px;bottom:18px;color:#fff;z-index:2}
+.hero .txt .crop{font-size:26px;font-weight:700;letter-spacing:.5px;text-shadow:0 2px 8px rgba(0,0,0,.45)}
+.hero .txt .stage{margin-top:6px;font-size:15px;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.4);
+                  border-radius:20px;padding:3px 14px;display:inline-block;backdrop-filter:blur(3px)}
+.hero .progress{position:absolute;left:22px;right:22px;bottom:0;height:5px;background:rgba(255,255,255,.28);z-index:2}
+.hero .progress em{display:block;height:100%;background:#fff}
+.hero .badge{position:absolute;right:18px;top:16px;z-index:2;background:rgba(255,255,255,.92);color:#2F5597;
+             border-radius:8px;padding:5px 12px;font-size:12.5px;font-weight:600}
+.hero.nophoto{display:flex;align-items:center;justify-content:center}
+.hero.nophoto .ph-note{position:absolute;right:18px;top:16px;font-size:11.5px;color:rgba(255,255,255,.85)}
+/* ---------------- 组件（与物候提醒页一致） ---------------- */
+.chip{background:#f1f5f9;border-radius:6px;padding:3px 10px;color:#334155;font-size:12.5px;display:inline-block;margin:2px 6px 2px 0}
+.chip.ok{background:#e8f5ee;color:#256b45}
+.chip.warn{background:#fdf1e3;color:#9a5b12}
+.tag{display:inline-block;border-radius:5px;padding:1.5px 8px;font-size:11.5px;margin:2px 4px 2px 0}
+.tag.blue{background:#eef3fb;color:#2F5597}
+.tag.red{background:#fdecec;color:#b3261e}
+.tag.amber{background:#fdf3e3;color:#96631a}
+.tag.green{background:#e9f5ee;color:#2b6b47}
+.tag.gray{background:#f1f5f9;color:#64748b}
+.bar{height:9px;background:#eef2f7;border-radius:5px;overflow:hidden;margin:7px 0 5px}
+.bar em{display:block;height:100%;background:linear-gradient(90deg,#2F5597,#3f7d5f);border-radius:5px}
+.line{font-size:13px;color:#334155;line-height:1.8}
+.line b{color:#2F5597}
+.timeline{display:flex;gap:3px;margin:12px 0 6px;align-items:flex-end}
+.tl-seg{flex:1;border-radius:4px;background:#eef2f7;position:relative;min-height:30px;display:flex;align-items:center;justify-content:center;
+        font-size:11px;color:#64748b;text-align:center;line-height:1.25;padding:3px 2px;overflow:hidden}
+.tl-seg.done{background:#dfeaf6;color:#4a5a6e}
+.tl-seg.cur{background:#2F5597;color:#fff;font-weight:600;min-height:40px}
+.tl-seg.next{background:#e6f1fb;color:#185FA5;border:1px dashed #85b7eb}
+.timeline-cap{font-size:11.5px;color:#94a3b8;text-align:center}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+th,td{border:1px solid #e8edf3;padding:6px 9px;text-align:left;vertical-align:top}
+th{background:#f6f9fc;color:#475569;font-weight:600;white-space:nowrap}
+.empty{color:#94a3b8;font-size:13px;padding:10px 0}
+.warnbar{background:#fdf3e3;border-left:3px solid #d99b2b;border-radius:0 8px 8px 0;padding:10px 13px;font-size:13px;color:#7a5312;margin:10px 0}
+.okbar{background:#e9f5ee;border-left:3px solid #3f7d5f;border-radius:0 8px 8px 0;padding:10px 13px;font-size:13px;color:#2b6b47;margin:10px 0}
+.sect{margin-top:16px;padding-top:14px;border-top:1px solid #eef2f7}
+.sect h3{font-size:13.5px;color:#2F5597;margin-bottom:9px;font-weight:600}
+.hint{font-size:11.5px;color:#94a3b8;line-height:1.7;margin-top:9px}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #cbd5e1;border-top-color:#2F5597;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.sibling{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.sibling a{font-size:12.5px;text-decoration:none;color:#2F5597;background:#eef3fb;border-radius:7px;padding:5px 12px}
+.sibling a:hover{background:#dbe7f8}
+/* ---------------- 时间轴可点 ---------------- */
+.tl-click{cursor:pointer;user-select:none;position:relative;transition:filter .15s,box-shadow .15s,transform .15s}
+.tl-click:hover{filter:brightness(1.06);box-shadow:0 0 0 2px rgba(47,85,151,.35) inset;transform:translateY(-1px)}
+.tl-click:focus-visible{outline:2px solid #2F5597;outline-offset:2px}
+/* 正在查看的那一段：琥珀色底 + 粗内框，跟"当前阶段"的深蓝底明确区分
+   （.tl-seg 有 overflow:hidden，所以标记做在框内，不用外凸的小三角） */
+.tl-click.sel{box-shadow:0 0 0 3px #d99b2b inset;background:#fdf3e3;color:#8a5a12;font-weight:700}
+/* 时间轴下方的"正在查看 + 回到当前阶段" */
+.timeline-cap.viewing{margin-top:9px;font-size:12.5px;color:#8a5a12;background:#fdf3e3;
+  border-radius:8px;padding:7px 12px;display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap}
+.timeline-cap.viewing b{color:#7a5312}
+.tl-back{font-family:inherit;font-size:12px;padding:4px 13px;border-radius:7px;border:1px solid #d99b2b;
+  background:#fff;color:#8a5a12;cursor:pointer}
+.tl-back:hover{background:#d99b2b;color:#fff}
+/* ---------------- 选中时期的正文（直接替换正文区块，不再另开面板） ---------------- */
+/* 阶段主题头部：每类时期一套配色，切来切去一眼能认出 */
+.spack-top{border-radius:10px;padding:13px 16px;border-left:5px solid var(--ac);margin-bottom:12px}
+.spack-badge{display:inline-block;font-size:11.5px;font-weight:600;color:#fff;background:var(--ac);
+  border-radius:20px;padding:2px 11px;letter-spacing:.2px}
+.spack-name{font-size:22px;font-weight:700;color:#1f2937;margin:8px 0 5px}
+.spack-meta{font-size:12.5px;color:#64748b;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.spack-rel{font-weight:600;padding:1px 9px;border-radius:5px}
+.spack-rel.now{background:#2F5597;color:#fff}
+.spack-rel.past{background:#eef2f7;color:#64748b}
+.spack-rel.future{background:#e9f5ee;color:#2b6b47}
+.spack-hero{position:relative;height:190px;border-radius:10px;background-size:cover;background-position:center;
+  display:flex;align-items:flex-end;overflow:hidden;margin-bottom:4px}
+.spack-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,23,42,.02) 45%,rgba(15,23,42,.6))}
+.spack-imgcap{position:relative;z-index:1;margin:0 0 10px 14px;color:#fff;font-size:12.5px;
+  text-shadow:0 1px 5px rgba(0,0,0,.55);letter-spacing:.3px}
+/* 相邻阶段翻页 */
+.spack-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px;
+  padding-top:13px;border-top:1px solid #eef2f7;flex-wrap:wrap}
+.spack-nav .spnav{font-family:inherit;font-size:12.5px;padding:7px 14px;border-radius:8px;
+  border:1px solid #cbd5e1;background:#fff;color:#2F5597;cursor:pointer;max-width:44%}
+.spack-nav .spnav:hover{background:#eef3fb;border-color:#2F5597}
+.spack-nav .spnav-idx{font-size:12px;color:#94a3b8}
+</style>
+</head>
+<body>
+    {% include '_nav.html' %}
+
+<div class="topbar">
+  <a class="back" href="{{ url_for('phenology_page') }}">&lsaquo; 返回物候提醒</a>
+  <h1 id="pageTitle">{{ '地块详情' if mode == 'plot' else '作物详情' }}</h1>
+  <span class="crumb">{{ '按该地块档案逐日推算' if mode == 'plot' else '按指定播种日期推算' }}</span>
+</div>
+
+<div class="wrap">
+  <div class="hero" id="hero">
+    <div class="mask"></div>
+    <div class="txt">
+      <div class="crop" id="heroCrop">加载中…</div>
+      <div class="stage" id="heroStage" style="display:none"></div>
+    </div>
+    <div class="badge" id="heroBadge" style="display:none"></div>
+    <div class="progress" id="heroBar" style="display:none"><em style="width:0"></em></div>
+  </div>
+
+  <div class="panel">
+    <div id="chips" style="margin-bottom:4px"><span class="empty">加载中…</span></div>
+    <div id="headWrap"></div>
+    <div id="timelineWrap" style="margin-top:12px"></div>
+    <div id="bodyWrap" style="margin-top:4px"><span class="spin"></span><span class="empty">正在按知识图谱推算…</span></div>
+    <div id="soilWrap"></div>
+    <div id="econWrap"></div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='detail_render.js') }}"></script>
+<script>
+'use strict';
+const MODE = '{{ mode }}';
+const PID  = {{ pid if mode == 'plot' else 'null' }};
+const CROP = {{ crop | tojson if mode == 'crop' else 'null' }};
+const QS   = new URLSearchParams(location.search);
+/* 浏览模式：从未种植的「全部作物」进来（作物详情页）——没有"当前阶段"概念 */
+window.BROWSE_MODE = (MODE === 'crop');
+
+/* 没有实拍图时按阶段给一个渐变色块（配色规则统一走 detail_render.js 的 stageTheme，避免两处不一致） */
+function stageGradient(short){ return stageTheme(short).grad; }
+
+function fillHero(d, title){
+  const hero = document.getElementById('hero');
+  const img  = d.hero_image;
+  document.getElementById('heroCrop').textContent = title;
+  if(d.hero_stage){
+    const el = document.getElementById('heroStage');
+    el.style.display = 'inline-block';
+    el.textContent = (window.BROWSE_MODE ? '生育期：' : '当前生育期：') + d.hero_stage;
+  }
+  if(img){
+    hero.insertAdjacentHTML('afterbegin', `<img src="${img}" alt="${esc(d.hero_stage)}">`);
+  } else {
+    hero.classList.add('nophoto');
+    hero.style.background = stageGradient(d.hero_stage);
+    hero.insertAdjacentHTML('afterbegin',
+      `<div class="ph-note">该阶段暂无实拍图，可放入 static/stages/${esc(d.crop || '')}__${esc(d.hero_stage || '')}.jpg</div>`);
+  }
+  if(!window.BROWSE_MODE && d.status === 'growing' && d.stage){
+    const badge = document.getElementById('heroBadge');
+    badge.style.display = 'block';
+    badge.textContent = '第 ' + d.day_no + ' / ' + d.total_days + ' 天';
+    const bar = document.getElementById('heroBar');
+    bar.style.display = 'block';
+    bar.firstElementChild.style.width = Math.max(2, Math.min(100, d.overall_percent || 0)) + '%';
+  }
+  document.title = title + ' · ' + (d.hero_stage || '物候详情');
+}
+
+function fillChips(d){
+  const c = [];
+  if(window.BROWSE_MODE){
+    if(d.total_days) c.push(`<span class="chip">全生育期：${d.total_days} 天</span>`);
+    if(d.stage_count) c.push(`<span class="chip">共 ${d.stage_count} 个生育期</span>`);
+    if(d.season) c.push(`<span class="chip">播种季节：${esc(d.season)}</span>`);
+    document.getElementById('chips').innerHTML = c.join('');
+    return;
+  }
+  c.push(`<span class="chip">播种日期：<b>${esc(d.sow_date)}</b></span>`);
+  if(d.total_days) c.push(`<span class="chip">全生育期：${d.total_days} 天</span>`);
+  if(d.status === 'growing') c.push(`<span class="chip ok">全生育期进度 ${d.overall_percent || 0}%</span>`);
+  if(d.stage_count) c.push(`<span class="chip">共 ${d.stage_count} 个生育期</span>`);
+  if(d.season) c.push(`<span class="chip">播种季节：${esc(d.season)}</span>`);
+  if((d.risks || []).length) c.push(`<span class="chip warn">当期风险 ${d.risks.length} 项</span>`);
+  if(d.next_stage) c.push(`<span class="chip">下一阶段：${esc(d.next_stage.short)}${d.days_to_next != null ? '（' + d.days_to_next + ' 天后）' : ''}</span>`);
+  document.getElementById('chips').innerHTML = c.join('');
+}
+
+function fail(msg){
+  document.getElementById('heroCrop').textContent = '加载失败';
+  document.getElementById('chips').innerHTML = '';
+  document.getElementById('bodyWrap').innerHTML =
+    `<div class="empty">${esc(msg)}</div><div class="sibling"><a href="/phenology-page">返回物候提醒</a></div>`;
+}
+
+/* =============== 时间轴：点任意方块，正文立刻切换成该时期 =============== */
+let CUR = null;        // 整份提醒数据（当前阶段）
+let CUR_IDX = -1;      // 当前阶段下标；未播种 = -1，已收获 = 最后一段
+let SEL_IDX = null;    // 时间轴上正在查看的时期；null = 当前阶段
+let CUR_TITLE = '';    // 页面主标题（地块名 · 作物）
+
+function paint(d, title){
+  CUR = d;
+  if(window.BROWSE_MODE){
+    /* 未种植作物的浏览页：不存在"现在处于哪一阶段" */
+    CUR_IDX = -1;
+    /* 点作物卡片进来（无 sow 参数）：默认看第一个生育期（播种出苗期）；
+       点宫格里某个时期方块进来（带 sow 参数）：定位到那个时期 */
+    SEL_IDX = (QS.get('sow') && d.status === 'growing'
+               && typeof d.stage_index === 'number' && d.stage_index >= 0)
+            ? d.stage_index : 0;
+  } else {
+    CUR_IDX = (d.status === 'growing') ? d.stage_index
+            : (d.status === 'done') ? (d.stages || []).length - 1 : -1;
+    SEL_IDX = null;
+  }
+  CUR_TITLE = title;
+  fillChips(d);
+  fillHero(d, title);
+  document.getElementById('headWrap').innerHTML = window.BROWSE_MODE
+    ? `<div class="line"><b>${esc(CUR_TITLE)}</b>${d.total_days ? '　全生育期 ' + d.total_days + ' 天' : ''}　共 ${(d.stages || []).length} 个生育期</div>`
+    : renderReminderHead(d);
+  document.getElementById('soilWrap').innerHTML = soilBlock(d.soil);
+  /* 经济效益测算回写（只有地块详情有 d.econ；作物浏览页没有地块，返回空字符串） */
+  document.getElementById('econWrap').innerHTML = econBlock(d.econ, d.plot && d.plot.id);
+  renderTimelineWrap();
+  bindTimeline();
+  if(window.BROWSE_MODE){
+    openStage(SEL_IDX);          // 正文直接展示所选时期的资料包
+  } else {
+    document.getElementById('bodyWrap').innerHTML = renderReminderBody(d);
+  }
+}
+
+function stages0(){ return (CUR && CUR.stages) || []; }
+
+/* 时间轴单独渲染，切换时期时只重画它（保持选中高亮与"回到当前阶段"入口） */
+function renderTimelineWrap(){
+  const wrap = document.getElementById('timelineWrap');
+  wrap.innerHTML = renderTimeline(stages0(), CUR_IDX, SEL_IDX);
+  const back = wrap.querySelector('[data-back]');
+  if(back) back.onclick = () => backToCur();
+}
+
+function bindTimeline(){
+  document.querySelectorAll('#timelineWrap .tl-click').forEach(el => {
+    el.addEventListener('click', () => openStage(el.dataset.idx));
+    el.addEventListener('keydown', e => {
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openStage(el.dataset.idx); }
+    });
+  });
+}
+
+/* 点时间轴方块：把正文换成该时期，同时把顶部大图也切成该时期的照片 */
+function openStage(idx){
+  const crop = (CUR && CUR.crop) || CROP || '';
+  if(!crop) return;
+  const soil = (CUR && CUR.plot && CUR.plot.soil) || QS.get('soil') || '';
+  SEL_IDX = Number(idx);
+  renderTimelineWrap();
+  bindTimeline();
+  const body = document.getElementById('bodyWrap');
+  body.innerHTML = '<span class="spin"></span><span class="empty">正在取该时期的农事与风险…</span>';
+  body.scrollIntoView({behavior:'smooth', block:'center'});
+
+  const url = '/api/stage/detail?crop=' + encodeURIComponent(crop) +
+              '&stage=' + encodeURIComponent(idx) +
+              '&soil=' + encodeURIComponent(soil) +
+              '&cur=' + encodeURIComponent(CUR_IDX);
+  fetch(url).then(r => r.json()).then(d => {
+    if(d.error){ body.innerHTML = `<div class="empty">${esc(d.error)}</div>`; return; }
+    d.cur_index = CUR_IDX;                    // 让正文能算出"比当前早/晚几段"
+    body.innerHTML = renderStagePack(d, false);
+    bindNav();
+    // 顶部大图一起切到该时期，否则会让人以为"点了没变"
+    setHero(d.image, (d.stage || {}).short, d.is_current);
+  }).catch(e => body.innerHTML = `<div class="empty">请求失败：${esc(e.message)}</div>`);
+}
+
+/* 正文里的「上一阶段 / 下一阶段」按钮 */
+function bindNav(){
+  document.getElementById('bodyWrap').querySelectorAll('[data-goto]').forEach(b => {
+    b.onclick = () => openStage(Number(b.dataset.goto));
+  });
+}
+
+/* 切换顶部大图：查看非当前阶段时，把阶段名标成"正在查看"，并隐藏当前阶段的天数徽标 */
+function setHero(image, stageName, isCurrent){
+  const hero = document.getElementById('hero');
+  const old = hero.querySelector('img');
+  if(old) old.remove();
+  const note = hero.querySelector('.ph-note');
+  if(note) note.remove();
+  hero.classList.remove('nophoto');
+  hero.style.background = '';
+  if(image){
+    hero.insertAdjacentHTML('afterbegin', `<img src="${image}" alt="${esc(stageName || '')}">`);
+  } else {
+    hero.classList.add('nophoto');
+    hero.style.background = stageGradient(stageName);
+  }
+  const el = document.getElementById('heroStage');
+  el.style.display = 'inline-block';
+  el.textContent = window.BROWSE_MODE
+    ? ('生育期：' + (stageName || ''))
+    : ((isCurrent === false)
+        ? ('正在查看：' + (stageName || '') + '（非当前阶段）')
+        : ('当前生育期：' + (stageName || '')));
+
+  // 天数徽标与生育进度条只对"当前阶段"有意义，查看其它时期时先收起
+  const badge = document.getElementById('heroBadge');
+  const bar = document.getElementById('heroBar');
+  if(window.BROWSE_MODE || isCurrent === false){
+    badge.style.display = 'none';
+    bar.style.display = 'none';
+  } else if(CUR && CUR.status === 'growing' && CUR.stage){
+    badge.style.display = 'block';
+    badge.textContent = '第 ' + CUR.day_no + ' / ' + CUR.total_days + ' 天';
+    bar.style.display = 'block';
+    bar.firstElementChild.style.width = Math.max(2, Math.min(100, CUR.overall_percent || 0)) + '%';
+  }
+}
+
+function backToCur(){
+  if(!CUR || !CUR.stages || !CUR.stages.length) return;
+  SEL_IDX = null;
+  renderTimelineWrap();
+  bindTimeline();
+  document.getElementById('bodyWrap').innerHTML = renderReminderBody(CUR);
+  const img = CUR.hero_image;
+  setHero(img, CUR.hero_stage, true);
+  document.getElementById('heroCrop').textContent = CUR_TITLE;
+}
+
+/* =================================== 加载 */
+if(MODE === 'plot'){
+  fetch('/api/plot/' + PID + '/detail').then(r => r.json()).then(d => {
+    if(d.error){ fail(d.error); return; }
+    const p = d.plot || {};
+    const title = (p.plot_name ? p.plot_name + ' · ' : '') + d.crop;
+    document.getElementById('pageTitle').textContent = title;
+    paint(d, d.crop);
+  }).catch(e => fail('请求失败：' + e.message));
+} else {
+  const sow = QS.get('sow') || '';
+  const soil = QS.get('soil') || '';
+  const url = '/api/crop/detail?crop=' + encodeURIComponent(CROP) +
+              '&sow=' + encodeURIComponent(sow) + '&soil=' + encodeURIComponent(soil);
+  document.getElementById('pageTitle').textContent = CROP + ' · 物候详情';
+  fetch(url).then(r => r.json()).then(d => {
+    if(d.error){ fail(d.error); return; }
+    paint(d, CROP);
+  }).catch(e => fail('请求失败：' + e.message));
+}
+</script>
+</body>
+</html>

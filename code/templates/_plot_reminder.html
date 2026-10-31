@@ -1,0 +1,366 @@
+{# ================================================================
+   地块「今日提醒」：卡片样式 + 详情弹层 + 渲染脚本
+   ----------------------------------------------------------------
+   物候期提醒页（phenology.html）与管理端「用户端管理」里展开的地块
+   **共用这一份**，所以两处看到的卡片和详情永远一致。
+
+   用法：在页面 <body> 内 include 一次（片段自带 DOM 与脚本）
+   依赖：宿主页面提供 `esc()` 转义函数（两页本来都有）
+   接口：POST /api/phenology（按作物 + 播种日期 + 土质推算）
+        POST /api/phenology/stage（单独取某个阶段）
+   对外：showDetail(crop, sow, title, soil) —— 点地块卡片时调用
+   ================================================================ #}
+<style>
+/* ---------------- 地块卡片（与物候期页同款） ---------------- */
+.plots{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:12px}
+.plots > .empty, .plots > .spin{grid-column:1 / -1}
+.plot{border:1px solid #e2e8f0;border-radius:12px;padding:14px 15px;background:#fff;display:flex;flex-direction:column;gap:9px;cursor:pointer;transition:.16s}
+.plot:hover{border-color:#b5d4f4;box-shadow:0 6px 18px rgba(47,85,151,.1);transform:translateY(-2px)}
+.plot-top{display:flex;align-items:flex-start;gap:8px}
+.plot-crop{font-size:16px;font-weight:600;color:#1f2937;line-height:1.3}
+.plot-name{font-size:11.5px;color:#94a3b8;margin-top:3px}
+.plot-area{margin-left:auto;font-size:11.5px;color:#64748b;background:#f4f7fb;border-radius:5px;padding:2px 7px;white-space:nowrap}
+.plot-msg{font-size:12px;color:#475569;line-height:1.65}
+.plot-acts{display:flex;gap:6px;margin-top:auto;padding-top:5px;border-top:1px solid #f1f5f9}
+.plot-acts button{flex:1}
+button.sm{font-size:12px;padding:4px 11px}
+/* 标签变体：只加颜色，尺寸沿用宿主页面的 .tag（两页的 .tag 本来就有基础样式） */
+.tag.blue{background:#eef3fb;color:#2F5597}
+.tag.red{background:#fdecec;color:#b3261e}
+.tag.amber{background:#fdf3e3;color:#96631a}
+.tag.green{background:#e9f5ee;color:#2b6b47}
+.tag.gray{background:#f1f5f9;color:#64748b}
+
+/* ---------------- 详情用到的排版 ---------------- */
+.bar{height:9px;background:#eef2f7;border-radius:5px;overflow:hidden;margin:7px 0 5px}
+.bar em{display:block;height:100%;background:linear-gradient(90deg,#2F5597,#3f7d5f);border-radius:5px}
+.line{font-size:13px;color:#334155;line-height:1.8}
+.line b{color:#2F5597}
+.timeline{display:flex;gap:3px;margin:12px 0 6px;align-items:flex-end}
+.tl-seg{flex:1;border-radius:4px;background:#eef2f7;position:relative;min-height:30px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#64748b;text-align:center;line-height:1.25;padding:3px 2px;overflow:hidden;cursor:pointer;transition:.14s}
+.tl-seg:hover{filter:brightness(.95)}
+.tl-seg.done{background:#dfeaf6;color:#4a5a6e}
+.tl-seg.cur{background:#2F5597;color:#fff;font-weight:600;min-height:40px}
+.tl-seg.next{background:#e6f1fb;color:#185FA5;border:1px dashed #85b7eb}
+.tl-seg.sel{outline:2px solid #3f7d5f;outline-offset:1px}
+.tl-bar{display:flex;align-items:center;gap:10px;margin:2px 0 4px}
+.tl-hint{font-size:11.5px;color:#94a3b8}
+.stage-head{display:flex;gap:16px;align-items:center;background:#f8fafc;border:1px solid #eef2f7;border-radius:12px;padding:12px 16px;margin:10px 0 2px}
+.stage-fig{flex:none;width:130px;height:114px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #eef2f7;border-radius:10px;overflow:hidden}
+/* 示意图现在是实拍照片（方形），固定框用 cover 裁切，避免被拉变形 */
+.stage-fig img{width:122px;height:106px;display:block;object-fit:cover;border-radius:8px}
+.stage-title{font-size:16px;font-weight:600;color:#1f2937;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.stage-sub{font-size:12.5px;color:#64748b;margin-top:7px;line-height:1.75}
+.warnbar{background:#fdf3e3;border-left:3px solid #d99b2b;border-radius:0 8px 8px 0;padding:10px 13px;font-size:13px;color:#7a5312;margin:10px 0}
+.okbar{background:#e9f5ee;border-left:3px solid #3f7d5f;border-radius:0 8px 8px 0;padding:10px 13px;font-size:13px;color:#2b6b47;margin:10px 0}
+.sect{margin-top:16px;padding-top:14px;border-top:1px solid #eef2f7}
+.sect h3{font-size:13.5px;color:#2F5597;margin-bottom:9px;font-weight:600}
+.head-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tw{overflow-x:auto}
+
+/* ---------------- 详情弹层 ---------------- */
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.46);display:none;justify-content:center;align-items:flex-start;z-index:200;padding:36px 16px;overflow-y:auto}
+.modal.show{display:flex}
+.modal-box{background:#fff;border-radius:14px;width:100%;max-width:940px;box-shadow:0 22px 55px rgba(15,23,42,.3);overflow:hidden;animation:pop .18s ease}
+@keyframes pop{from{transform:translateY(-8px);opacity:.6}to{transform:none;opacity:1}}
+.modal-head{display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid #eef2f7;position:sticky;top:0;background:#fff;z-index:1}
+.modal-head h2{font-size:15px;font-weight:600;color:#1f2937;flex:1}
+.modal-close{font-size:20px;line-height:1;color:#94a3b8;background:none;border:none;cursor:pointer;padding:2px 8px;border-radius:6px}
+.modal-close:hover{background:#f1f5f9;color:#334155}
+.modal-body{padding:18px 22px 24px}
+/* 下面几个类名在宿主页面里另有含义（如管理端的 .empty 列表空态、
+   .hint 表单提示），所以统一限定在弹层内部，避免污染页面其它部分 */
+#modal .empty{color:#94a3b8;font-size:13px;padding:10px 0}
+#modal .hint{font-size:11.5px;color:#94a3b8;line-height:1.7;margin-top:9px}
+#modal .spin{display:inline-block;width:13px;height:13px;border:2px solid #cbd5e1;border-top-color:#2F5597;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+#modal table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+#modal th,#modal td{border:1px solid #e8edf3;padding:6px 9px;text-align:left;vertical-align:top}
+#modal th{background:#f6f9fc;color:#475569;font-weight:600;white-space:nowrap}
+
+/* 窄屏：弹层几乎铺满，时间轴改为可横向滑动，避免文字被挤成一列 */
+@media(max-width:640px){
+  .modal{padding:10px 8px 20px}
+  .modal-box{border-radius:12px}
+  .modal-head{padding:13px 14px}
+  .modal-head h2{font-size:14px}
+  .modal-body{padding:14px 14px 20px}
+  .stage-head{flex-direction:column;align-items:flex-start}
+  .stage-head{gap:12px;padding:11px 12px}
+  .stage-fig{width:96px;height:86px}
+  .stage-fig img{width:88px;height:78px}
+  .timeline{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:5px;gap:4px}
+  .timeline::-webkit-scrollbar{height:0}
+  .tl-seg{flex:0 0 auto;min-width:66px;font-size:10.5px;min-height:46px;line-height:1.35;white-space:normal}
+  .tl-seg.cur{min-height:52px}
+  .tl-hint{display:none}
+  #modal table{font-size:12px}
+  #modal th,#modal td{padding:6px 7px}
+  .tw table{min-width:540px}
+}
+</style>
+
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2 id="detailTitle">今日提醒</h2>
+      <button class="modal-close" onclick="closeModal()" title="关闭（Esc）">&times;</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+  </div>
+</div>
+
+<script>
+/* 当前弹层上下文：作物 / 播种日 / 土质 / 手填 pH / 当前阶段下标，
+   供点击时间轴切换阶段时调用接口 */
+let ctx = {crop: '', sow: '', soil: '', ph: '', curIdx: 0};
+
+/* 片段自带取元素的小工具：宿主页面有的叫 $、有的直接用 document，
+   这里统一用它，避免和页面的命名撞车 */
+function prById(id){ return document.getElementById(id); }
+
+/* ---------------- 打开 / 关闭详情 ----------------
+   ph：农户自己填的土壤 pH（选填）。图谱里土壤节点的酸碱度只是"这个土类大概什么范围"，
+   跟自家地块实测值常常对不上，所以页面显示的一律是这里传进来的值。 */
+function showDetail(crop, sow, title, soil, ph){
+  const phVal = (ph === undefined || ph === null) ? '' : String(ph);
+  prById('modal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  prById('detailTitle').textContent = title + ' · 今日提醒';
+  prById('detailBody').innerHTML = '<span class="spin"></span><span class="empty">正在按图谱推算…</span>';
+  fetch('/api/phenology', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({crop: crop, sow_date: sow, soil: soil || '', ph: phVal})
+  }).then(r => r.json()).then(d => {
+      if(d.error){ prById('detailBody').innerHTML = '<div class="empty">' + esc(d.error) + '</div>'; return; }
+      prById('detailBody').innerHTML = renderReminder(d);
+      fitTables(prById('detailBody'));
+    }).catch(e => prById('detailBody').innerHTML = '<div class="empty">推算失败：' + esc(e.message) + '</div>');
+}
+
+function closeModal(){
+  prById('modal').classList.remove('show');
+  document.body.style.overflow = '';
+}
+/* 点遮罩关闭 + Esc 关闭 */
+prById('modal').addEventListener('click', e => { if(e.target.id === 'modal') closeModal(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeModal(); });
+
+/* 土质区块：地块固有条件，影响后面所有水肥措施
+   ⚠ 这里**不显示图谱里的「酸碱度」**（那只是该土类的大致范围，跟自家地块对不上）；
+   酸碱度只看农户手填的 ph_user，没填就不显示这一项，也不给酸碱类建议。 */
+function soilBlock(soil){
+  if(!soil) return '';
+  const cls = soil.match_level === 'good' ? 'okbar' : (soil.match_level === 'warn' ? 'warnbar' : '');
+  let h = `<div class="sect"><h3>土质与土壤管理 · ${esc(soil.soil)}</h3>`;
+  h += `<div class="${cls || 'line'}">${esc(soil.match_text)}</div>`;
+  h += `<table><tr><th>质地</th><th>肥力</th><th>保水性</th><th>主要分布</th></tr>
+    <tr>
+      <td>${esc(soil.texture)}${soil.texture_label && soil.texture_label !== '未标注' ? '（' + esc(soil.texture_label) + '）' : ''}</td>
+      <td>${esc(soil.fertility)}</td><td>${esc(soil.water)}</td><td>${esc(soil.area || '-')}</td>
+    </tr></table>`;
+  // 地块记录的 pH（有才显示）—— 可能是按土质自动带入的典型值，也可能是农户实测后改的
+  if(soil.ph_user !== null && soil.ph_user !== undefined && soil.ph_user !== ''){
+    h += `<div class="line" style="margin-top:10px"><b>土壤 pH</b>：
+      <b>${esc(soil.ph_user)}</b>${soil.ph_label ? '　' + esc(soil.ph_label) : ''}</div>`;
+  } else {
+    h += `<div class="hint">未记录土壤 pH。填了才会给调酸 / 调碱的具体建议 —— 在左侧「添加 / 更新地块」里选个土质会自动带入典型值，也可以直接填实测值。</div>`;
+  }
+  const tips = [].concat(soil.tips || [], soil.ph_tips || [], soil.fert_tips || [], soil.water_tips || []);
+  if(tips.length){
+    h += `<div class="line" style="margin-top:10px"><b>针对这块地，水肥管理要这样调整</b></div>
+      <ul style="margin:6px 0 0 20px;font-size:13px;line-height:1.9;color:#334155">
+      ${tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`;
+  }
+  if((soil.amendments || []).length){
+    h += `<div class="line" style="margin-top:9px">该土壤常用改良剂：` +
+      soil.amendments.map(a => `<span class="tag green">${esc(a)}</span>`).join('') + `</div>`;
+  }
+  return h + `</div>`;
+}
+
+function renderReminder(d){
+  if(d.status === 'unknown') return `<div class="empty">${esc(d.message)}</div>`;
+  const stages = d.stages || [];
+
+  /* 已种植多久 + 预计收获：地块常常是种了一段时间后才补录的，所以这两个量单独突出 */
+  const elapsedTag = d.elapsed_days
+    ? `<span class="tag blue">已种植 ${esc(d.elapsed_text || (d.elapsed_days + ' 天'))}</span>` : '';
+  let harvestTag = '';
+  if(d.harvest_date && d.status !== 'before_sow'){
+    harvestTag = (d.status === 'done')
+      ? `<span class="tag gray">本季收获期 ${esc(d.harvest_date)}</span>`
+      : `<span class="tag gray">预计 ${esc(d.harvest_date)} 收获`
+        + (d.days_to_harvest > 0 ? `（还剩 ${d.days_to_harvest} 天）` : '') + `</span>`;
+  }
+
+  /* 手填的土壤 pH：没选土质也要显示，所以直接用返回值里的 ph_user */
+  const hasPh = (d.ph_user !== null && d.ph_user !== undefined && d.ph_user !== '');
+  const phTag = hasPh ? `<span class="tag green">土壤 pH ${esc(d.ph_user)}</span>` : '';
+
+  const head = `<div class="line"><b>${esc(d.crop)}</b>　播种 ${esc(d.sow_date)}　今天 ${esc(d.today)}
+    ${d.total_days ? '　全生育期 ' + d.total_days + ' 天' : ''}</div>
+    <div class="head-tags">${elapsedTag}${harvestTag}${phTag}</div>`;
+
+  if(d.status === 'before_sow'){
+    ctx = {crop: d.crop, sow: d.sow_date, soil: (d.soil && d.soil.soil) || '',
+           ph: hasPh ? d.ph_user : '', curIdx: -1};
+    return head + `<div class="okbar">${esc(d.message)}</div>` + renderTimeline(stages, -1)
+      + `<div id="stageBox"><div class="empty">还没播种。点击上方任一时段，可提前查看各阶段的农事与风险。</div></div>`
+      + soilBlock(d.soil);
+  }
+  if(d.status === 'done'){
+    ctx = {crop: d.crop, sow: d.sow_date, soil: (d.soil && d.soil.soil) || '',
+           ph: hasPh ? d.ph_user : '', curIdx: stages.length - 1};
+    return head + `<div class="warnbar">${esc(d.message)}</div>` + renderTimeline(stages, stages.length - 1)
+      + `<div id="stageBox"><div class="empty">本季已结束。点击上方任一时段可回顾该阶段的农事与风险。</div></div>`
+      + soilBlock(d.soil);
+  }
+
+  const cur = d.stage, i = d.stage_index;
+  let html = head;
+  html += `<div class="okbar" style="font-size:14px">${esc(d.message)}</div>`;
+  html += renderTimeline(stages, i);
+  html += `<div class="line" style="margin-top:8px;font-size:12px;color:#94a3b8">
+    本阶段第 ${d.stage_day}/${cur.days} 天 · 全生育期进度 ${d.overall_percent}%</div>`;
+
+  if(d.next_soon && d.next_stage){
+    html += `<div class="warnbar"><b>提前预警：</b>还有 ${d.days_to_next} 天进入【${esc(d.next_stage.short)}】，
+      建议现在就准备${(d.next_todo || []).slice(0, 3).map(p => esc(p.name)).join('、') || '下一阶段农事'}。
+      ${(d.next_risks || []).length ? '该阶段需重点防：' + (d.next_risks || []).slice(0, 4).map(r => esc(r.name)).join('、') + '。' : ''}</div>`;
+  }
+
+  html += soilBlock(d.soil);
+
+  /* 记住上下文，点击时间轴切换阶段时要用 */
+  ctx = {crop: d.crop, sow: d.sow_date, soil: (d.soil && d.soil.soil) || '',
+         ph: hasPh ? d.ph_user : '', curIdx: i};
+  const curDetail = {
+    name: cur.name, short: cur.short, days: cur.days,
+    day_range: `第 ${cur.start}–${cur.end} 天`,
+    icon: d.icon, todo: d.todo, fertilize: d.fertilize, risks: d.risks,
+    is_current: true, stage_day: d.stage_day, index: i
+  };
+  html += `<div id="stageBox">${renderStageBody(curDetail)}</div>`;
+  return html;
+}
+
+/* ================== 单个阶段详情（当前阶段 / 点击时间轴查看的历史或未来阶段） ================== */
+function renderStageBody(d){
+  const curTag = d.is_current ? '<span class="tag blue">当前阶段</span>' : '';
+  let h = `<div class="sect" style="margin-top:12px;padding-top:12px">
+    <div class="stage-head">
+      <div class="stage-fig">${d.icon
+        ? `<img src="/static/stages/${esc(d.icon)}.jpg" alt="${esc(d.short || d.name)}实拍照片"
+              onerror="this.onerror=null;this.src='/static/stages/${esc(d.icon)}.svg'">`
+        : '<span class="empty" style="padding:0">暂无示意图</span>'}</div>
+      <div>
+        <div class="stage-title">${esc(d.short || d.name)} ${curTag}</div>
+        <div class="stage-sub">${d.day_range ? '播种后 ' + esc(d.day_range) + ' · 历时 ' + d.days + ' 天' : ''}</div>
+        ${d.is_current && d.stage_day ? `<div class="stage-sub">当前处于该阶段第 ${d.stage_day}/${d.days} 天</div>` : ''}
+        ${d.is_current ? '' : `<div class="stage-sub" style="color:#96631a">这是${d.index < ctx.curIdx ? '已经过' : '还没到'}的阶段，供提前规划参考</div>`}
+      </div>
+    </div>`;
+
+  // 农事
+  h += `<div class="sect"><h3>该阶段农事（${esc(d.short || d.name)}）</h3>`;
+  const todo = d.todo || [];
+  h += todo.length
+    ? `<table><tr><th>农事操作</th><th>适宜时期</th><th>作用</th></tr>` +
+      todo.map(p => `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.timing || '-')}</td><td>${esc(p.effect || '-')}</td></tr>`).join('') + `</table>`
+    : '<div class="empty">该阶段暂无具体农事条目</div>';
+  h += `</div>`;
+
+  // 施肥
+  const f = d.fertilize;
+  if(f){
+    h += `<div class="sect"><h3>施肥要点：${esc(f.title)}</h3><div class="line">${esc(f.tip)}</div>`;
+    if((f.fertilizers || []).length){
+      h += `<table><tr><th>推荐肥料</th><th>类型</th><th>养分含量</th><th>施用方式</th><th>特点</th></tr>` +
+        f.fertilizers.map(x => `<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.type || '-')}</td>
+          <td>${esc(x.nutrient || '-')}</td><td>${esc(x.method || '-')}</td><td>${esc(x.note || '-')}</td></tr>`).join('') +
+        `</table>`;
+    }
+    if((f.nutrients || []).length){
+      h += `<div class="line" style="margin-top:8px;font-size:12.5px;color:#64748b">该作物需要的养分：` +
+        f.nutrients.map(n => esc(n.name)).join('、') + `</div>`;
+    }
+    if(f.soil_note){
+      h += `<div class="warnbar" style="margin-top:9px"><b>结合土质调整：</b>${esc(f.soil_note)}</div>`;
+    }
+    h += `</div>`;
+  }
+
+  // 病虫害风险
+  const risks = d.risks || [];
+  h += `<div class="sect"><h3>该阶段病虫害与草害风险${risks.length ? '（' + risks.length + ' 项）' : ''}</h3>`;
+  if(!risks.length){
+    h += `<div class="okbar">该阶段图谱内没有标记为高发的病虫害，保持田间巡查即可。</div>`;
+  } else {
+    h += `<table><tr><th>名称</th><th>类别</th><th>危害等级</th><th>危害部位</th><th>常发时期</th><th>防治措施</th></tr>` +
+      risks.map(r => {
+        const lv = r.level === '重' ? 'tag red' : (r.level === '中' ? 'tag amber' : 'tag gray');
+        return `<tr><td><b>${esc(r.name)}</b></td><td>${esc(r.label)}</td>
+          <td><span class="${lv}">${esc(r.level || '未分级')}</span></td>
+          <td>${esc(r.part || '-')}</td><td>${esc(r.period || '-')}</td>
+          <td>${(r.measures || []).map(m => `<span class="tag green">${esc(m)}</span>`).join('') || '-'}</td></tr>`;
+      }).join('') + `</table>`;
+    h += `<div class="hint">防治顺序遵循「农业防治 → 生物防治 → 物理防治 → 化学农药」；使用化学农药请严格执行安全间隔期，采收前禁用。</div>`;
+  }
+  h += `</div></div>`;
+  return h;
+}
+
+/* 点击时间轴上的任一段 → 查看该阶段 */
+function selectStage(idx){
+  markTimeline(idx);
+  prById('stageBox').innerHTML = '<span class="spin"></span><span class="empty">正在读取该阶段数据…</span>';
+  fetch('/api/phenology/stage', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({crop: ctx.crop, index: idx, sow_date: ctx.sow,
+                                   soil: ctx.soil, ph: ctx.ph})
+  }).then(r => r.json()).then(d => {
+    if(d.error){ prById('stageBox').innerHTML = `<div class="empty">${esc(d.error)}</div>`; return; }
+    prById('stageBox').innerHTML = renderStageBody(d);
+    fitTables(prById('stageBox'));
+  }).catch(e => { prById('stageBox').innerHTML = `<div class="empty">读取失败：${esc(e.message)}</div>`; });
+}
+
+/* 窄屏下把表格包一层横滑容器（不改变表格自身布局，列不会错位） */
+function fitTables(root){
+  if(!root) return;
+  root.querySelectorAll('table').forEach(t => {
+    const p = t.parentElement;
+    if(p && p.classList.contains('tw')) return;
+    const w = document.createElement('div');
+    w.className = 'tw';
+    p.insertBefore(w, t);
+    w.appendChild(t);
+  });
+}
+
+function backToCurrent(){ selectStage(ctx.curIdx); }
+
+function markTimeline(selIdx){
+  document.querySelectorAll('.tl-seg').forEach((el, i) => el.classList.toggle('sel', i === selIdx));
+  const btn = prById('backCur');
+  if(btn) btn.style.display = (selIdx === ctx.curIdx) ? 'none' : '';
+}
+
+function renderTimeline(stages, curIdx){
+  if(!stages || !stages.length) return '';
+  let h = '<div class="timeline">';
+  stages.forEach((s, i) => {
+    const cls = i < curIdx ? 'done' : (i === curIdx ? 'cur' : (i === curIdx + 1 ? 'next' : ''));
+    h += `<div class="tl-seg ${cls}" onclick="selectStage(${i})"
+      title="点击查看【${esc(s.short)}】第 ${s.start}-${s.end} 天（历时 ${s.days} 天）">
+      ${esc(s.short)}<br><span style="opacity:.72">${s.start}-${s.end}天</span></div>`;
+  });
+  h += `</div>
+    <div class="tl-bar">
+      <span class="tl-hint">点击任一时段，可查看该阶段的农事、施肥与病虫害风险</span>
+      <button class="sm" id="backCur" style="margin-left:auto;display:none" onclick="backToCurrent()">回到当前阶段</button>
+    </div>`;
+  return h;
+}
+</script>

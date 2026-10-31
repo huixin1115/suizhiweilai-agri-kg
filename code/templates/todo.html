@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今日待办 · 今天该干什么</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --blue: #2F5597;
+            --green: #3f7d5f;
+            --ink: #1f2937;
+            --ink-2: #4b5563;
+            --ink-3: #94a3b8;
+            --line: #d9e2ee;
+            --shadow: 0 1px 4px rgba(47, 85, 151, .08);
+        }
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, sans-serif;
+            color: var(--ink);
+            background: #f4f6f9;
+            min-height: 100vh;
+            padding: 26px 20px 40px;
+            -webkit-font-smoothing: antialiased;
+        }
+        .page { max-width: 980px; margin: 0 auto; }
+
+        header.pagehead {
+            background: linear-gradient(105deg, #2F5597 0%, #37699b 45%, #3f7d5f 100%);
+            border-radius: 16px;
+            padding: 20px 26px;
+            color: #fff;
+            box-shadow: 0 10px 26px rgba(47, 85, 151, .18);
+        }
+        header.pagehead h1 { font-size: 18px; font-weight: 600; }
+        header.pagehead p { font-size: 12.5px; opacity: .85; margin-top: 7px; line-height: 1.7; }
+
+        .section-head {
+            display: flex; align-items: baseline; gap: 10px;
+            margin: 22px 0 13px;
+        }
+        .section-head h2 { font-size: 15px; font-weight: 600; }
+        .section-head span { font-size: 12.5px; color: var(--ink-3); }
+        .section-head .more {
+            margin-left: auto; font-size: 12.5px; color: var(--blue); text-decoration: none;
+        }
+        .section-head .more:hover { text-decoration: underline; }
+
+        /* ---------------- 待办卡片 ---------------- */
+        .todoWrap { display: flex; flex-direction: column; gap: 11px; }
+        .todocard {
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 14px 16px;
+            box-shadow: var(--shadow);
+        }
+        .todocard.urgent { border-left: 3px solid #d99b2b; }
+        .todocard.finished { background: #fbfdfc; }
+        .tdhead { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+        .tdplot { font-size: 14px; font-weight: 600; }
+        .tdplot b { color: var(--blue); font-weight: 600; }
+        .tdmeta { font-size: 11.5px; color: var(--ink-3); }
+        .tdright { margin-left: auto; display: flex; align-items: baseline; gap: 11px; white-space: nowrap; }
+        .tdprog { font-size: 11.5px; color: var(--ink-3); }
+        .tdprog.ok { color: #2b6b47; font-weight: 600; }
+        .tdlink {
+            font-size: 12.5px; color: var(--blue);
+            text-decoration: none; white-space: nowrap;
+        }
+        .tdlink:hover { text-decoration: underline; }
+        .tdlist { margin-top: 8px; padding-top: 7px; border-top: 1px dashed #eef2f7; }
+        .tdrow {
+            display: flex; align-items: flex-start; gap: 9px;
+            padding: 5px 0; cursor: pointer; user-select: none;
+        }
+        .tdbox {
+            width: 16px; height: 16px; flex: none; margin-top: 2px;
+            border: 1.5px solid #cbd5e1; border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; color: #fff;
+            transition: background .15s, border-color .15s;
+        }
+        .tdrow:hover .tdbox { border-color: var(--green); }
+        .tdrow.on .tdbox { background: var(--green); border-color: var(--green); }
+        .tdrow.on .tdname { text-decoration: line-through; color: var(--ink-3); }
+        .tdname { font-size: 13px; }
+        .tdsub { margin-left: auto; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+        .tdnote { margin-top: 8px; font-size: 12px; color: var(--ink-2); line-height: 1.7; }
+        .tdok {
+            margin-top: 9px; background: #e9f5ee; color: #2b6b47;
+            border-radius: 8px; padding: 7px 11px; font-size: 12px; line-height: 1.7;
+        }
+        .tdwarn {
+            margin-top: 9px; background: #fdf3e3; color: #96631a;
+            border-radius: 8px; padding: 7px 11px; font-size: 12px; line-height: 1.7;
+        }
+        .tdrisk { margin-top: 8px; }
+        .tag {
+            display: inline-block; border-radius: 5px;
+            padding: 1.5px 7px; font-size: 11px; margin-right: 5px;
+            white-space: nowrap;
+        }
+        .tag.red { background: #fdecec; color: #b3261e; }
+        .tag.amber { background: #fdf3e3; color: #96631a; }
+        .tag.green { background: #e9f5ee; color: #2b6b47; }
+        .tag.gray { background: #f1f5f9; color: #64748b; }
+
+        .pempty {
+            background: #fff;
+            border: 1px dashed #d5dde7;
+            border-radius: 12px;
+            padding: 24px 20px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--ink-3);
+            line-height: 2;
+        }
+        .pempty a { color: var(--blue); text-decoration: none; font-weight: 600; }
+        .pempty a:hover { text-decoration: underline; }
+        .skel {
+            height: 92px;
+            border-radius: 12px;
+            background: linear-gradient(100deg, #f1f4f8 30%, #f8fafc 50%, #f1f4f8 70%);
+            background-size: 220% 100%;
+            animation: sh 1.3s linear infinite;
+        }
+        @keyframes sh { to { background-position: -220% 0; } }
+
+        @media (max-width: 560px) {
+            body { padding: 14px 12px 30px; }
+            header.pagehead { padding: 16px 18px; }
+            .todocard { padding: 12px 13px; }
+            .tdsub { display: none; }
+        }
+    </style>
+</head>
+<body>
+    {% include '_nav.html' %}
+    <div class="page">
+        <header class="pagehead">
+            <h1>今日待办</h1>
+            <p>每块地当前处于哪个生育期、这一阶段该干什么，都从知识图谱推算而来；
+               干完的活可以逐条勾掉 —— 勾选记在服务器的地块档案里，换台电脑打开也一样。</p>
+        </header>
+
+        <div class="section-head" id="head1">
+            <h2>今天要做的</h2>
+            <span id="cnt1">加载中…</span>
+            <a class="more" href="{{ url_for('phenology_page') }}">管理地块 &rsaquo;</a>
+        </div>
+        <section class="todoWrap" id="box1">
+            <div class="skel"></div>
+            <div class="skel"></div>
+        </section>
+
+        <div class="section-head" id="head2" style="display:none">
+            <h2>今日已完成</h2>
+            <span id="cnt2"></span>
+        </div>
+        <section class="todoWrap" id="box2"></section>
+
+        <div class="section-head" id="head3" style="display:none">
+            <h2>还没播种 / 本季已结束</h2>
+            <span id="cnt3"></span>
+        </div>
+        <section class="todoWrap" id="box3"></section>
+    </div>
+
+    <script src="{{ url_for('static', filename='day_rollover.js') }}"></script>
+    <script>
+        const $ = id => document.getElementById(id);
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+            c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+        let ITEMS = [];
+        let COUNTS = {};
+        let AVAILABLE = true;
+        let LOAD_ERROR = '';
+
+        /* 分组：1 今天要做的 / 2 今日已完成 / 3 未播种·已结束
+           推算失败的地块放第一组 —— 那才是最需要人看一眼的 */
+        function groupOf(it) {
+            if (it.error) return 1;
+            if (it.all_done) return 2;
+            if (it.status === 'growing') return 1;
+            return 3;
+        }
+
+        function load() {
+            fetch('/api/today/todos').then(r => r.json())
+                .then(d => {
+                    ITEMS = (d && d.items) || [];
+                    COUNTS = (d && d.counts) || {};
+                    AVAILABLE = !d || d.available !== false;
+                    LOAD_ERROR = (d && d.error) || '';
+                    render();
+                })
+                .catch(e => {
+                    AVAILABLE = false;
+                    LOAD_ERROR = e.message || '请求失败';
+                    render();
+                });
+        }
+        load();
+        /* 页面一直开着过了零点，分组还会停在昨天 —— 日期一变就重新拉一次 */
+        DayRollover.watch(load);
+
+        function render() {
+            const y = window.scrollY;
+            const box = [null, $('box1'), $('box2'), $('box3')];
+            const head = [null, $('head1'), $('head2'), $('head3')];
+
+            if (!ITEMS.length) {
+                head[2].style.display = head[3].style.display = 'none';
+                head[1].style.display = 'flex';
+                $('cnt1').textContent = '';
+                $('box1').innerHTML = AVAILABLE
+                    ? '<div class="pempty">还没有地块档案 —— 记下一块地，之后每天打开就知道该干什么。'
+                      + '<br><a href="/phenology-page">去添加第一块地 &rsaquo;</a></div>'
+                    : '<div class="pempty">当前读不到地块档案，今天算不出待办。'
+                      + (LOAD_ERROR ? '<br>原因：' + esc(LOAD_ERROR) : '')
+                      + '<br><a href="/phenology-page">去物候提醒页看看 &rsaquo;</a></div>';
+                window.scrollTo(0, y);
+                return;
+            }
+
+            const g = {1: [], 2: [], 3: []};
+            ITEMS.forEach(it => g[groupOf(it)].push(it));
+            for (const k of [1, 2, 3]) {
+                head[k].style.display = g[k].length ? 'flex' : 'none';
+                box[k].innerHTML = g[k].map(card).join('');
+            }
+
+            const tasks = COUNTS.tasks || 0;
+            $('cnt1').textContent = tasks
+                ? `${COUNTS.plots || 0} 块地 · ${tasks} 项待办`
+                  + (COUNTS.urgent ? ` · ${COUNTS.urgent} 项需优先处理` : '')
+                : '今天暂无农事';
+            if (g[2].length) $('cnt2').textContent = `${g[2].length} 块地今天已收工`;
+            if (g[3].length) $('cnt3').textContent = `${g[3].length} 块地`;
+
+            bind();
+            window.scrollTo(0, y);
+        }
+
+        function card(it) {
+            const stage = it.stage ? ` · <b>${esc(it.stage)}</b>` : '';
+            const dayTxt = (it.stage_day != null && it.stage_days)
+                ? `　第 ${it.stage_day}/${it.stage_days} 天` : '';
+            const meta = [];
+            if (it.area_mu) meta.push(it.area_mu + ' 亩');
+            if (it.region) meta.push(esc(it.region));
+
+            let rows = '';
+            (it.todo || []).forEach(t => {
+                const on = !!t.done;
+                rows += `<div class="tdrow${on ? ' on' : ''}" data-plot="${it.plot_id}"`
+                     + ` data-name="${esc(t.name)}" role="button" tabindex="0">`
+                     + `<span class="tdbox">${on ? '✓' : ''}</span>`
+                     + `<span class="tdname">${esc(t.name)}</span>`
+                     + `<span class="tdsub">${esc(t.timing || t.effect || '')}</span>`
+                     + `</div>`;
+            });
+            if (it.error) {
+                rows = `<div class="tdnote">这块地推算失败：${esc(it.error)}</div>`;
+            } else if (!rows) {
+                rows = '<div class="tdnote">这个阶段图谱里没有具体农事条目，保持田间巡查即可。</div>';
+            }
+
+            let extra = '';
+            if (it.all_done) {
+                extra += '<div class="tdok">今天这块地的活已经全部勾完了，明天会自动重新起算。</div>';
+            }
+            if (it.next_soon && it.next_stage) {
+                extra += `<div class="tdwarn">${it.days_to_next} 天后进入【${esc(it.next_stage)}】，可以提前准备</div>`;
+            } else if (it.message && !it.error && !it.all_done) {
+                extra += `<div class="tdnote">${esc(it.message)}</div>`;
+            }
+            const risks = it.risks || [];
+            if (risks.length) {
+                extra += '<div class="tdrisk">' + risks.map(r => {
+                    const cls = r.level === '重' ? 'red' : (r.level === '中' ? 'amber' : 'gray');
+                    return `<span class="tag ${cls}">${esc(r.name)}${r.level ? ' · ' + esc(r.level) : ''}</span>`;
+                }).join('') + '</div>';
+            }
+
+            const n = (it.todo || []).length;
+            const prog = n
+                ? `<span class="tdprog${it.all_done ? ' ok' : ''}">已完成 ${it.done_count || 0}/${n}</span>`
+                : '';
+
+            return `<div class="todocard${it.urgent ? ' urgent' : ''}${it.all_done ? ' finished' : ''}">`
+                + `<div class="tdhead">`
+                +   `<span class="tdplot">${esc(it.plot_name)}${stage}</span>`
+                +   `<span class="tdmeta">${esc(it.crop)}${dayTxt}${meta.length ? ' · ' + meta.join(' · ') : ''}</span>`
+                +   `<span class="tdright">${prog}<a class="tdlink" href="${esc(it.url)}">查看详情 ›</a></span>`
+                + `</div>`
+                + `<div class="tdlist">${rows}</div>`
+                + `${extra}`
+                + `</div>`;
+        }
+
+        /* 勾选：先改界面（点一下立刻有反馈），存服务器失败再回滚。
+           ⚠ 勾选按【条目】记（plot_task_log 的 task_name），所以一天干几件能分别勾 */
+        function rebuild(it) {
+            const n = (it.todo || []).length;
+            it.done_count = (it.todo || []).filter(x => x.done).length;
+            it.all_done = n > 0 && it.done_count === n;
+        }
+
+        function toggleTask(row) {
+            const pid = parseInt(row.dataset.plot, 10);
+            const name = row.dataset.name;
+            const it = ITEMS.find(x => x.plot_id === pid);
+            if (!it) return;
+            const t = (it.todo || []).find(x => x.name === name);
+            if (!t) return;
+            const want = !t.done;
+            t.done = want;
+            rebuild(it);
+            render();
+            fetch('/api/plot/task', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({plot_id: pid, task_name: name, done: want})
+            }).then(r => r.json()).then(d => {
+                if (!d.ok) {                       // 存不上就把界面改回去
+                    t.done = !want;
+                    rebuild(it);
+                    render();
+                    alert(d.message || '勾选没能保存');
+                }
+            }).catch(() => {
+                t.done = !want;
+                rebuild(it);
+                render();
+                alert('勾选没能保存（网络或数据库异常）');
+            });
+        }
+
+        function bind() {
+            // 三个分组里都有可勾选的行 —— 已完成的也能反勾（取消完成）
+            ['box1', 'box2', 'box3'].forEach(id => {
+                $(id).querySelectorAll('.tdrow[data-name]').forEach(row => {
+                    const hit = () => toggleTask(row);
+                    row.addEventListener('click', hit);
+                    row.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hit(); }
+                    });
+                });
+            });
+        }
+    </script>
+</body>
+</html>
