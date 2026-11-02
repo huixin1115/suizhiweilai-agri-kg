@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的地块 · 用户端</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Microsoft YaHei","PingFang SC",system-ui,sans-serif; color: #1f2937; background: #f4f6f9; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+        .wrap { padding: 26px 30px 40px; }
+        .head h1 { font-size: 20px; font-weight: 600; }
+        .head p { font-size: 13px; color: #94a3b8; margin-top: 7px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-top: 20px; }
+        .card { background: #fff; border: 1px solid #e6ebf2; border-radius: 14px; padding: 20px 22px; box-shadow: 0 1px 4px rgba(47,85,151,.06); border-left: 4px solid #3f8f6a; }
+        .card h3 { font-size: 16px; font-weight: 700; color: #256b49; }
+        .card .meta { margin-top: 12px; font-size: 13.5px; color: #475569; line-height: 1.9; }
+        .card .meta b { color: #1f2937; }
+        .tag { display:inline-block; font-size:12px; padding:2px 9px; border-radius:16px; background:#effaf3; color:#2f7a56; border:1px solid #cfe9da; margin-left:6px;}
+        .empty { text-align:center; color:#a9b4c2; padding:50px; background:#fff; border:1px dashed #d6deea; border-radius:14px; margin-top:20px; }
+        .empty a { color:#2F5597; font-weight:600; text-decoration:none; }
+        .view-btn { display:inline-block; margin-top:14px; font-size:13px; font-weight:600; color:#2F5597; text-decoration:none; }
+        .view-btn:hover { text-decoration:underline; }
+        .no-sow { margin-top:10px; font-size:12px; color:#b07d2b; background:#fdf6ec; border:1px solid #f0e0c8; border-radius:8px; padding:6px 10px; }
+        /* 经济效益测算结果（在测算页关联地块后回写到这里） */
+        .econ { margin-top:12px; background:#f6faf7; border:1px solid #d9ebdf; border-radius:10px; padding:10px 12px; font-size:13px; line-height:1.8; }
+        .econ .t { font-size:12px; color:#2f7a56; font-weight:600; letter-spacing:.3px; }
+        .econ b { color:#1f2937; }
+        .econ .neg b { color:#c0392b; }
+        .econ .go { display:inline-block; margin-top:6px; font-size:12.5px; font-weight:600; color:#2F5597; text-decoration:none; }
+        .econ .go:hover { text-decoration:underline; }
+    </style>
+</head>
+<body>
+    {% include '_nav.html' %}
+
+    <div class="wrap">
+        <div class="head">
+            <h1>我的地块</h1>
+            <p>你在「物候期提醒」页建档的地块（本页只读，增删改请在物候期提醒页操作）。当前登录：<b>{{ username }}</b>（用户端）</p>
+        </div>
+
+        {% if plots %}
+        <div class="grid">
+            {% for p in plots %}
+            <div class="card">
+                <h3>{{ p.plot_name }}{% if p.crop %}<span class="tag">{{ p.crop }}</span>{% endif %}{% if p.soil %}<span class="tag" style="background:#eef4fd;color:#2F5597;border-color:#d3e2f7;">{{ p.soil }}</span>{% endif %}</h3>
+                <div class="meta">
+                    作物：<b>{{ p.crop or '—' }}</b><br>
+                    土壤类型：<b>{{ p.soil or '—' }}</b><br>
+                    种植日期：<b>{{ p.sow_date or '未设置' }}</b><br>
+                    面积：<b>{{ p.area_mu or '—' }}</b> 亩<br>
+                    位置：<b>{{ p.location or '—' }}</b><br>
+                    备注：<b>{{ p.note or '—' }}</b>
+                </div>
+                {% if not p.sow_date %}<div class="no-sow">尚未设置播种日期，物候提醒按默认推算</div>{% endif %}
+                {% if p.econ %}
+                <div class="econ">
+                    <div class="t">最近一次经济效益测算</div>
+                    <div class="{{ 'neg' if p.econ.per_mu_net < 0 else '' }}">
+                        亩均净收益：<b>{{ '%.0f'|format(p.econ.per_mu_net) }} 元/亩</b>
+                        （{{ p.econ.crop }}，亩产 {{ '%.0f'|format(p.econ.yield_per_mu) }} 公斤 ×
+                        {{ '%.2f'|format(p.econ.price) }} 元/公斤）<br>
+                        {% if p.econ.area_mu %}按 {{ '%.1f'|format(p.econ.area_mu) }} 亩计：
+                        <b>{{ '%.0f'|format(p.econ.total_net) }} 元</b> · {% endif %}
+                        保本收购价 <b>{{ '%.2f'|format(p.econ.break_even_price) if p.econ.break_even_price else '—' }}</b> 元/公斤 ·
+                        保本亩产 <b>{{ '%.0f'|format(p.econ.break_even_yield) if p.econ.break_even_yield else '—' }}</b> 公斤
+                        {% if p.econ.updated %}<br><span style="color:#8a97a8;font-size:12px">测算于 {{ p.econ.updated }}</span>{% endif %}
+                    </div>
+                    <a class="go" href="/econ-page?plot={{ p.id }}">重新测算这块地 →</a>
+                </div>
+                {% else %}
+                <div class="econ">
+                    <div class="t">经济效益</div>
+                    这块地还没算过账。
+                    <a class="go" href="/econ-page?plot={{ p.id }}">去测算 →</a>
+                </div>
+                {% endif %}
+                <a class="view-btn" href="/plot/{{ p.id }}">查看详情 →</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty">
+            你还没有地块档案。<br>
+            去「<a href="/phenology-page">物候期提醒</a>」页添加第一块地，之后每天打开就知道该干什么。
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

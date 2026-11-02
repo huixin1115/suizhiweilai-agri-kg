@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>经济效益测算 · 种啥更划算</title>
+<style>
+:root{
+    --blue:#2F5597; --blue-dark:#24406f; --green:#3f7d5f; --red:#b3261e;
+    --ink:#1f2937; --ink-2:#4b5563; --ink-3:#94a3b8; --line:#e6ebf2;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+    font-family:"Microsoft YaHei","PingFang SC",system-ui,-apple-system,sans-serif;
+    background:#f4f6f9; color:var(--ink); min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+}
+header{
+    background:linear-gradient(100deg,#2F5597,#3f7d5f); color:#fff;
+    padding:12px 22px; display:flex; align-items:baseline; gap:15px; flex-wrap:wrap;
+}
+header h1{font-size:18px;font-weight:600}
+header span{font-size:12.5px;opacity:.88}
+header .hacts{margin-left:auto; display:flex; gap:8px; align-items:center}
+header a.hbtn{
+    font-size:12.5px; color:#fff; text-decoration:none;
+    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.5);
+    padding:4px 12px; border-radius:7px; transition:.15s; white-space:nowrap;
+}
+header a.hbtn:hover{background:rgba(255,255,255,.26)}
+.wrap{max-width:1320px;margin:0 auto;padding:16px 16px 40px}
+
+/* ---------------- 概览条 ---------------- */
+.sum{
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+    background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:13px 18px; margin-bottom:14px; font-size:13px; color:var(--ink-2);
+}
+.sum > div{display:flex; align-items:baseline; gap:5px}
+.sum b{font-size:17px; font-weight:600; color:var(--blue)}
+.sum .good b{color:var(--green)}
+.sum .bad b{color:var(--red)}
+.sum .zero b{color:var(--ink-3)}
+.sum .sep{color:#dbe3ec; margin:0 3px}
+.sum .tip{margin-left:auto; font-size:12.5px; color:var(--ink-3)}
+
+/* ---------------- 两列布局 ---------------- */
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px}
+.panel{background:#fff; border:1px solid var(--line); border-radius:12px; padding:15px 17px}
+.panel h2{font-size:14px; font-weight:600; color:var(--ink); margin-bottom:11px}
+.panel h2 span{font-size:12px; font-weight:400; color:var(--ink-3); margin-left:8px}
+
+/* 表单 */
+.f{margin-bottom:10px}
+.lb{display:block; font-size:12.5px; color:#64748b; margin-bottom:5px}
+input,select{
+    width:100%; padding:8px 11px; border:1px solid #cbd5e1; border-radius:8px;
+    font-size:13px; font-family:inherit; color:#334155; background:#fff; outline:none;
+}
+input:focus,select:focus{border-color:var(--blue); box-shadow:0 0 0 3px rgba(47,85,151,.12)}
+.row2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.costs{display:grid; grid-template-columns:1fr 1fr; gap:9px 10px; margin:12px 0 4px;
+       padding-top:11px; border-top:1px dashed #e2e8f0}
+.costs .f{margin:0}
+.costs .lb{font-size:12px}
+.costs .u{font-size:11px; color:#a9b4c2; margin-left:3px}
+.f .u{font-size:11px; color:#a9b4c2; margin-left:4px}
+/* 选了地块之后的那行提示（带出了什么、还缺什么） */
+.plotFill{margin:-2px 0 10px; font-size:12.5px; color:#5a6b82; line-height:1.7}
+.plotFill b{color:#1f2937}
+.plotFill .miss{color:#b07d2b}
+.plotFill a{color:#2F5597; text-decoration:none}
+.plotFill a:hover{text-decoration:underline}
+.acts{display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:13px}
+button{
+    font-family:inherit; font-size:13px; padding:8px 17px; border-radius:8px;
+    border:1px solid #cbd5e1; background:#fff; color:#334155; cursor:pointer; transition:.15s;
+}
+button:hover{border-color:var(--blue); color:var(--blue)}
+button:disabled{opacity:.55; cursor:not-allowed}
+button.pri{border-color:var(--blue); background:var(--blue); color:#fff}
+button.pri:hover{background:var(--blue-dark); border-color:var(--blue-dark); color:#fff}
+button.sm{font-size:12px; padding:5px 12px}
+button.danger{color:var(--red); border-color:#f0c4c0}
+button.danger:hover{background:#fdeaea; border-color:var(--red); color:var(--red)}
+.hint{font-size:12px; color:var(--ink-3); line-height:1.6}
+.hint.err{color:var(--red)}
+.hint.ok{color:var(--green)}
+
+/* 对比榜 */
+.rank{display:flex; flex-direction:column; gap:8px; margin-bottom:12px}
+.rk{
+    display:flex; align-items:center; gap:10px;
+    border:1px solid #eef2f7; border-radius:10px; padding:9px 12px; background:#fcfdff;
+}
+.rk-no{
+    width:20px; height:20px; flex:none; border-radius:6px; background:#eef3fb; color:var(--blue);
+    font-size:11.5px; font-weight:600; display:flex; align-items:center; justify-content:center;
+}
+.rk-crop{font-size:13.5px; font-weight:600}
+.rk-sub{font-size:11.5px; color:var(--ink-3); margin-top:2px}
+.rk-val{margin-left:auto; text-align:right}
+.rk-val b{font-size:16px; font-weight:600; color:var(--green)}
+.rk-val.bad b{color:var(--red)}
+.rk-val span{display:block; font-size:11px; color:var(--ink-3)}
+.chart{height:230px}
+.pane-empty{
+    border:1px dashed #cfdbea; border-radius:10px; padding:16px 18px;
+    font-size:12.5px; color:var(--ink-3); line-height:1.8;
+}
+
+/* ---------------- 明细卡片 ---------------- */
+.sec-head{
+    display:flex; align-items:baseline; gap:9px;
+    margin:20px 0 10px; font-size:14px; font-weight:600; color:var(--ink);
+}
+.sec-head span{font-size:12px; font-weight:400; color:var(--ink-3)}
+.list{display:flex; flex-direction:column; gap:11px}
+.ec{
+    background:#fff; border:1px solid var(--line); border-left:3px solid var(--green);
+    border-radius:12px; padding:14px 17px;
+}
+.ec.bad{border-left-color:var(--red)}
+.ec-top{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.ec-top b{font-size:14.5px; font-weight:600}
+.tag{font-size:11px; border-radius:5px; padding:2px 8px; background:#eef3fb; color:var(--blue)}
+.tag.area{background:#f1f5f9; color:#475569}
+.tag.plot{background:#eef4fd; color:#2F5597}
+.tag.plot a{color:#2F5597; text-decoration:none}
+.tag.plot a:hover{text-decoration:underline}
+.tag.good{background:#e8f5ee; color:#256b45}
+.tag.bad{background:#fdeaea; color:var(--red)}
+.ec-net{margin-left:auto; font-size:13px; color:var(--ink-3)}
+.ec-net b{font-size:17px; color:var(--green)}
+.ec.bad .ec-net b{color:var(--red)}
+.ec-grid{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr));
+    gap:6px 14px; margin-top:11px; font-size:12.5px; color:var(--ink-2);
+}
+.ec-grid div{display:flex; justify-content:space-between; gap:8px; border-bottom:1px dashed #f1f5f9; padding:3px 0}
+.ec-grid i{font-style:normal; color:var(--ink-3)}
+.ec-grid b{font-weight:600; color:var(--ink)}
+.ec-note{font-size:12px; color:var(--ink-3); margin-top:8px}
+.ec-acts{display:flex; gap:8px; margin-top:11px; padding-top:9px; border-top:1px solid #f1f5f9}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #cbd5e1;border-top-color:#2F5597;
+      border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+@media (max-width:1000px){
+    .grid2{grid-template-columns:1fr}
+    .sum .tip{margin-left:0; width:100%}
+}
+@media (max-width:560px){
+    .row2,.costs{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+    {% include '_nav.html' %}
+<header>
+    <h1>经济效益测算</h1>
+    <span>填一组投入产出，自动算收益 —— 几个作物摆在一起，种啥更划算一目了然</span>
+    <div class="hacts">
+        <a class="hbtn" href="{{ url_for('advice_page', mode='planning') }}">生产规划 &rsaquo;</a>
+    </div>
+</header>
+
+<div class="wrap">
+    <section class="sum" id="sum" style="display:none">
+        <div><b id="sCount">0</b>个测算方案</div>
+        <div class="sep">·</div>
+        <div class="good"><b id="sBest">–</b>最划算</div>
+        <div class="sep">·</div>
+        <div><b id="sAvg">0</b>元/亩 平均净收益</div>
+        <div class="sep">·</div>
+        <div class="bad" id="sLossWrap"><b id="sLoss">0</b>个方案亏损</div>
+        <div class="tip">成本一律按「元/亩」填；面积只做等比例放大，不影响亩均收益</div>
+    </section>
+
+    <div class="grid2">
+        <!-- 左：录入 -->
+        <div class="panel">
+            <h2 id="formTitle">新增一个测算<span>亩产与收购价按当地近三年的平均情况估就行</span></h2>
+            <div class="f"><span class="lb">地块<span class="u">选填</span></span>
+                <select id="plotSel"><option value="">不关联地块（只做方案对比）</option></select></div>
+            <div class="plotFill" id="plotFill"></div>
+            <div class="f"><span class="lb">作物</span><select id="cropSel"><option value="">加载中…</option></select></div>
+            <div class="row2">
+                <div class="f"><span class="lb">面积（亩，可留空）</span>
+                    <input id="area" type="number" step="0.1" min="0" placeholder="如 3.5"></div>
+                <div class="f"><span class="lb">预期亩产（公斤/亩）</span>
+                    <input id="yld" type="number" step="1" min="0" placeholder="如 450"></div>
+            </div>
+            <div class="f"><span class="lb">收购价（元/公斤）</span>
+                <input id="price" type="number" step="0.01" min="0" placeholder="如 2.60"></div>
+            <div class="f" style="margin:0"><span class="lb">投入成本（元/亩，留空按 0 算）</span></div>
+            <div class="costs" id="costs"></div>
+            <div class="hint" id="costHint"></div>
+            <div class="f" style="margin-top:10px"><span class="lb">备注（品种 / 年份 / 销路）</span>
+                <input id="note" placeholder="选填"></div>
+            <div class="acts">
+                <button class="pri" id="saveBtn" type="button">保存并加入对比</button>
+                <button id="resetBtn" type="button">清空重填</button>
+                <span class="hint" id="formHint"></span>
+            </div>
+        </div>
+
+        <!-- 右：对比 -->
+        <div class="panel">
+            <h2>收益对比<span>按「亩均净收益」排序，最划算的排最前</span></h2>
+            <div class="rank" id="rank"></div>
+            <div class="chart" id="chart"></div>
+        </div>
+    </div>
+
+    <div class="sec-head">全部测算 <span id="cnt"></span></div>
+    <div class="list" id="list"></div>
+</div>
+
+{# 对比图用本地 echarts（不连外网） #}
+<script src="{{ url_for('static', filename='echarts.min.js') }}"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+let ITEMS = [];
+let COSTS = [];            // [{key,label}] —— 由接口给，保证前后端字段一致
+let EDIT_ID = null;        // 正在编辑哪条（null = 新增）
+let CHART = null;
+let PLOTS = [];            // 我的地块（来自 /api/plot/list），用于关联测算
+
+const yuan = v => (v == null ? '—' : Number(v).toLocaleString('zh-CN', { maximumFractionDigits: 2 }) + ' 元');
+const num = (v, d) => (v == null || v === '' ? null : Number(v));
+const fixed = (v, n) => (v == null ? '—' : Number(v).toFixed(n));
+
+/* ---------------- 地块关联 ---------------- */
+let WANT_PLOT = new URLSearchParams(location.search).get('plot') || '';  // 从地块详情页 ?plot= 跳过来
+let WANT_APPLIED = false;
+
+function plotById(id){
+    const n = Number(id);
+    return PLOTS.filter(p => Number(p.id) === n)[0] || null;
+}
+
+/* 地块上的作物名可能不在图谱作物清单里（建档时手填的）→ 临时补一个 option，
+   不然 `$('cropSel').value = xxx` 会静默失败，看着像"没带出来" */
+function ensureCropOption(name){
+    if (!name) return;
+    const sel = $('cropSel');
+    for (const o of sel.options) if (o.value === name) return;
+    const op = document.createElement('option');
+    op.value = name; op.textContent = name + '（地块档案）';
+    sel.appendChild(op);
+}
+
+/* 只显示提示行，不动表单内容（编辑已有方案时用这个） */
+function renderPlotHint(){
+    const box = $('plotFill');
+    const p = plotById($('plotSel').value);
+    if (!p){ box.innerHTML = ''; return; }
+    const bits = [];
+    if (p.crop) bits.push('作物 <b>' + esc(p.crop) + '</b>');
+    if (p.area_mu) bits.push('面积 <b>' + fixed(p.area_mu, 1) + ' 亩</b>');
+    if (p.sow_date) bits.push('播种 <b>' + esc(p.sow_date) + '</b>');
+    if (p.soil) bits.push('土质 <b>' + esc(p.soil) + '</b>');
+    const miss = [];
+    if (!p.crop) miss.push('这块地没填作物');
+    if (!p.area_mu) miss.push('没填面积 —— 这里手填，或去「物候期提醒」页补上');
+    box.innerHTML = (bits.length ? '地块档案：' + bits.join(' · ') + '<br>' : '') +
+        (miss.length ? '<span class="miss">※ ' + miss.join('；') + '</span>' : '');
+}
+
+/* 把地块的作物 + 面积带进表单（切换地块、URL 预选时调用） */
+function applyPlotFill(){
+    const p = plotById($('plotSel').value);
+    if (!p){ renderPlotHint(); return; }
+    if (p.crop){
+        ensureCropOption(p.crop);
+        $('cropSel').value = p.crop;
+        // 地块带出作物时也把参考成本补上，但只补空的 ——
+        // 万一这条测算已经有存过的数（?plot= 进来编辑），不能盖掉
+        fillCostsFromCrop(false);
+    }
+    if (p.area_mu) $('area').value = p.area_mu;
+    renderPlotHint();
+}
+
+/* ---------------- 表单 ---------------- */
+function renderCostInputs(){
+    $('costs').innerHTML = COSTS.map(c => `
+        <div class="f"><span class="lb">${esc(c.label)}<span class="u">元/亩</span></span>
+            <input id="cf_${esc(c.key)}" type="number" step="1" min="0" placeholder="0"></div>`).join('');
+}
+
+/* ---------------- 选作物 → 自动带出各项投入成本的参考值 ----------------
+   数据来自 /api/econ/cost-defaults（三层：按作物 → 按类别 → 兜底），
+   整包一次拉下来，换作物时本地查表，不再发请求。
+   ⚠ 这里填的只是**能改的起点**，页面提示里写明了要按当地实际情况改。 */
+let COST_REF = null;                 // 三层参考值整包
+const CROP_CAT = {};                 // 作物名 → 图谱里的类别（第二层兜底要用）
+
+function loadCostRef(){
+    fetch('/api/econ/cost-defaults').then(r => r.json()).then(d => {
+        if (d && d.ok && d.by_crop) COST_REF = d;
+    }).catch(() => { /* 拿不到就不自动填，七个框照常手填，功能不受影响 */ });
+}
+
+/* force=true：选作物时用，直接覆盖（这就是"选了作物自动填上"的本意）
+   force=false：地块带出作物时用，只补空的，别盖掉用户已经填了一半的数 */
+function fillCostsFromCrop(force){
+    const box = $('costHint');
+    if (!box) return;
+    const name = $('cropSel').value;
+    if (!COST_REF || !COSTS.length || !name){ box.textContent = ''; return; }
+
+    const cat = CROP_CAT[name] || '';
+    const byCrop = COST_REF.by_crop[name];
+    const ref = byCrop || COST_REF.by_category[cat] || COST_REF.fallback;
+    if (!ref){ box.textContent = ''; return; }
+
+    /* 亩产与收购价走同一套三层规则（按作物 → 按类别 → 兜底），
+       但**是三张独立的表**：亩产来自图谱的「平均亩产kg」、收购价来自公开行情、
+       七项成本是按种植结构估的 —— 口径不同，别混在一条记录里，改起来才不会互相牵连。 */
+    const yld = COST_REF.yield_by_crop[name] || COST_REF.yield_by_category[cat]
+                || COST_REF.yield_fallback;
+    const prc = COST_REF.price_by_crop[name] || COST_REF.price_by_category[cat]
+                || COST_REF.price_fallback;
+
+    let filled = 0;
+    COSTS.forEach(c => {
+        const el = $('cf_' + c.key);
+        if (!el) return;
+        if (!force && String(el.value).trim() !== '') return;   // 非强制：只补空的
+        el.value = ref[c.key];
+        filled++;
+    });
+
+    // 亩产 / 收购价：同一套"强制覆盖 / 只补空"的规则
+    [['yld', yld, 0], ['price', prc, 2]].forEach(([id, v, dp]) => {
+        const el = $(id);
+        if (!el || v === undefined || v === null || v === '') return;
+        if (!force && String(el.value).trim() !== '') return;
+        el.value = Number(v).toFixed(dp);
+        filled++;
+    });
+    if (!filled){ box.textContent = ''; return; }
+
+    const from = byCrop ? ('「' + name + '」')
+               : (cat ? ('「' + cat + '」这一类') : '同类作物');
+    box.textContent = '已按' + from + '带入参考值：亩产取自图谱，收购价按公开行情，'
+        + '七项成本按种植结构估算 —— 都只是起点，请按当地实际情况改。';
+}
+
+$('cropSel').addEventListener('change', () => fillCostsFromCrop(true));
+
+function fillForm(it){
+    EDIT_ID = it ? it.id : null;
+    $('formTitle').innerHTML = it
+        ? `修改「${esc(it.crop)}」的测算<span>改完点下面的「保存修改」</span>`
+        : `新增一个测算<span>亩产与收购价按当地近三年的平均情况估就行</span>`;
+    $('saveBtn').textContent = it ? '保存修改' : '保存并加入对比';
+    $('cropSel').value = it ? it.crop : '';
+    // 编辑时只还原地块选择、不重新带出（否则地块上的作物/面积会盖掉这条方案自己存的值）
+    $('plotSel').value = (it && it.plot_id) ? it.plot_id : '';
+    renderPlotHint();
+    $('area').value = (it && !it.area_assumed) ? it.area_mu : '';
+    $('yld').value = it ? it.yield_per_mu : '';
+    $('price').value = it ? it.price : '';
+    $('note').value = it ? (it.note || '') : '';
+    COSTS.forEach(c => {
+        const el = $('cf_' + c.key);
+        if (el) el.value = (it && it[c.key]) ? it[c.key] : '';
+    });
+    $('formHint').textContent = it ? '正在编辑已有方案' : '';
+    $('formHint').className = 'hint';
+    $('costHint').textContent = '';      /* 换方案时把上一份的"已按参考值填入"提示清掉 */
+}
+
+function formBody(){
+    const body = {
+        crop: $('cropSel').value,
+        area_mu: $('area').value.trim(),
+        yield_per_mu: $('yld').value.trim(),
+        price: $('price').value.trim(),
+        note: $('note').value.trim(),
+        // 关联地块：后端还会再校验一次归属，不是自己的地会当没关联处理
+        plot_id: $('plotSel').value
+    };
+    COSTS.forEach(c => { body[c.key] = ($('cf_' + c.key) || {}).value || ''; });
+    if (EDIT_ID) body.id = EDIT_ID;
+    return body;
+}
+
+/* ---------------- 渲染 ---------------- */
+function render(d){
+    const avail = (d && d.available !== false);
+    // 成本输入框只在第一次拿到字段定义时构建（重建会把用户正在填的内容清掉）
+    if (d && d.cost_fields && d.cost_fields.length && !COSTS.length){
+        COSTS = d.cost_fields;
+        renderCostInputs();
+    }
+    if (!avail){
+        $('rank').innerHTML = `<div class="pane-empty">测算记录需要数据库连接，当前不可用
+            （${esc((d && d.error) || 'MySQL 未启动')}）。<br>数据库起来后刷新本页即可。</div>`;
+        $('list').innerHTML = '';
+        $('sum').style.display = 'none';
+        return;
+    }
+    ITEMS = (d && d.items) || [];
+    const s = (d && d.summary) || {};
+    $('cnt').textContent = ITEMS.length ? `共 ${ITEMS.length} 个` : '';
+
+    // 概览
+    $('sum').style.display = '';
+    $('sCount').textContent = s.count || 0;
+    $('sBest').textContent = s.best ? `${s.best.crop}（${fixed(s.best.per_mu_net, 0)} 元/亩）` : '—';
+    $('sAvg').textContent = fixed(s.avg_per_mu_net || 0, 0);
+    $('sLoss').textContent = s.loss_count || 0;
+    $('sLossWrap').classList.toggle('zero', !(s.loss_count > 0));
+    $('sBest').parentElement.classList.toggle('zero', !s.best);
+
+    // 对比榜
+    if (!ITEMS.length){
+        $('rank').innerHTML = `<div class="pane-empty">
+            还没有测算。<b>左边先填一个你打算种的作物</b> —— 亩产、收购价、各项成本按当地情况估个大概，
+            存下来就会自动算出收益；再填第二个、第三个，就能横向比出哪个更划算。</div>`;
+    } else {
+        $('rank').innerHTML = ITEMS.map((it, i) => `
+            <div class="rk">
+                <span class="rk-no">${i + 1}</span>
+                <div>
+                    <div class="rk-crop">${esc(it.crop)}</div>
+                    <div class="rk-sub">亩收入 ${fixed(it.per_mu_income, 0)} 元 · 亩成本 ${fixed(it.per_mu_cost, 0)} 元
+                        ${it.roi ? ' · 投入产出比 ' + fixed(it.roi, 2) : ''}</div>
+                </div>
+                <div class="rk-val ${it.per_mu_net < 0 ? 'bad' : ''}">
+                    <b>${fixed(it.per_mu_net, 0)} 元/亩</b>
+                    <span>总净收益 ${fixed(it.total_net, 0)} 元（按 ${fixed(it.area_mu, 1)} 亩）</span>
+                </div>
+            </div>`).join('');
+    }
+    drawChart();
+    renderList();
+}
+
+function drawChart(){
+    const el = $('chart');
+    if (!ITEMS.length){
+        if (CHART){ CHART.dispose(); CHART = null; }
+        el.innerHTML = '<div class="pane-empty">有 2 个以上方案时，这里会画出收入 / 成本 / 净收益的对比柱状图</div>';
+        return;
+    }
+    if (el.firstChild && el.firstChild.tagName !== 'DIV') { /* canvas 已在 */ }
+    if (!CHART){
+        el.innerHTML = '';        // 清掉空态文案，免得和 canvas 叠在一起
+        CHART = echarts.init(el);
+    }
+    const crops = ITEMS.map(x => x.crop);
+    CHART.setOption({
+        grid: { left: 6, right: 12, top: 34, bottom: 4, containLabel: true },
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' },
+                   valueFormatter: v => fixed(v, 0) + ' 元' },
+        legend: { top: 0, itemWidth: 11, itemHeight: 11, textStyle: { fontSize: 11 } },
+        color: ['#4a7bc8', '#c98a3c', '#3f7d5f'],
+        xAxis: { type: 'category', data: crops,
+                 axisLabel: { fontSize: 11, interval: 0, rotate: crops.length > 5 ? 24 : 0 } },
+        yAxis: { type: 'value', axisLabel: { fontSize: 11 },
+                 splitLine: { lineStyle: { color: '#eef2f7' } } },
+        series: [
+            { name: '总收入', type: 'bar', barMaxWidth: 26, data: ITEMS.map(x => x.total_income) },
+            { name: '总成本', type: 'bar', barMaxWidth: 26, data: ITEMS.map(x => x.total_cost) },
+            { name: '总净收益', type: 'bar', barMaxWidth: 26, data: ITEMS.map(x => x.total_net) }
+        ]
+    }, true);
+}
+
+function money(v){ return Number(v || 0).toLocaleString('zh-CN', { maximumFractionDigits: 0 }); }
+
+function renderList(){
+    const box = $('list');
+    if (!ITEMS.length){ box.innerHTML = ''; return; }
+    box.innerHTML = ITEMS.map(it => `
+        <div class="ec ${it.per_mu_net < 0 ? 'bad' : ''}">
+            <div class="ec-top">
+                <b>${esc(it.crop)}</b>
+                <span class="tag area">${fixed(it.area_mu, 1)} 亩${it.area_assumed ? '（未填面积，按 1 亩估）' : ''}</span>
+                ${it.plot_id ? `<span class="tag plot">地块 <a href="/plot/${it.plot_id}">${esc(it.plot_name || ('#' + it.plot_id))}</a></span>`
+                             : (it.plot_name ? `<span class="tag plot">原地块 ${esc(it.plot_name)}（已删除）</span>` : '')}
+                <span class="tag">亩产 ${fixed(it.yield_per_mu, 0)} 公斤</span>
+                <span class="tag">收购价 ${fixed(it.price, 2)} 元/公斤</span>
+                ${it.per_mu_net >= 0 ? '<span class="tag good">有得赚</span>' : '<span class="tag bad">会亏</span>'}
+                <span class="ec-net">净收益 <b>${money(it.total_net)} 元</b>（${fixed(it.per_mu_net, 0)} 元/亩）</span>
+            </div>
+            <div class="ec-grid">
+                <div><i>亩收入</i><b>${fixed(it.per_mu_income, 0)} 元</b></div>
+                <div><i>亩成本</i><b>${fixed(it.per_mu_cost, 0)} 元</b></div>
+                <div><i>总收入</i><b>${money(it.total_income)} 元</b></div>
+                <div><i>总成本</i><b>${money(it.total_cost)} 元</b></div>
+                <div><i>投入产出比</i><b>${it.roi == null ? '—' : fixed(it.roi, 2)}</b></div>
+                <div><i>保本收购价</i><b>${it.break_even_price == null ? '—' : fixed(it.break_even_price, 2) + ' 元/公斤'}</b></div>
+                <div><i>保本亩产</i><b>${it.break_even_yield == null ? '—' : fixed(it.break_even_yield, 0) + ' 公斤'}</b></div>
+                <div><i>成本合计</i><b>${fixed(it.per_mu_cost, 0)} 元/亩</b></div>
+            </div>
+            <div class="ec-note">成本构成：${COSTS.map(c => `${esc(c.label)} ${fixed(it[c.key] || 0, 0)}`).join(' · ')}</div>
+            ${it.note ? `<div class="ec-note">备注：${esc(it.note)}</div>` : ''}
+            <div class="ec-acts">
+                <button class="sm" type="button" onclick="editItem(${it.id})">编辑</button>
+                <button class="sm danger" type="button" onclick="delItem(${it.id})">删除</button>
+            </div>
+        </div>`).join('');
+}
+
+/* ---------------- 交互 ---------------- */
+function editItem(id){
+    const it = ITEMS.filter(x => x.id === id)[0];
+    if (!it) return;
+    fillForm(it);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function delItem(id){
+    const it = ITEMS.filter(x => x.id === id)[0];
+    if (!it) return;
+    if (!confirm(`删除「${it.crop}」这条测算？`)) return;
+    fetch('/api/econ/delete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id })
+    }).then(r => r.json()).then(d => {
+        if (!d.ok) throw new Error(d.message || '删除失败');
+        if (EDIT_ID === id) fillForm(null);
+        render(d);
+    }).catch(e => alert('删除失败：' + e.message));
+}
+
+$('saveBtn').addEventListener('click', function(){
+    const btn = this;
+    const hint = $('formHint');
+    const body = formBody();
+    if (!body.crop){ hint.className = 'hint err'; hint.textContent = '先选一个作物'; return; }
+    btn.disabled = true; btn.textContent = '保存中…';
+    hint.className = 'hint'; hint.textContent = '';
+    fetch('/api/econ/save', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    }).then(r => r.json()).then(d => {
+        if (!d.ok) throw new Error(d.message || '保存失败');
+        hint.className = 'hint ok';
+        hint.textContent = d.message || '已保存';
+        fillForm(null);
+        render(d);
+    }).catch(e => {
+        hint.className = 'hint err';
+        hint.textContent = e.message;
+    }).finally(() => {
+        btn.disabled = false;
+        btn.textContent = EDIT_ID ? '保存修改' : '保存并加入对比';
+    });
+});
+
+$('resetBtn').addEventListener('click', () => {
+    fillForm(null);
+    $('formHint').textContent = '';
+});
+
+window.addEventListener('resize', () => { if (CHART) CHART.resize(); });
+
+/* ---------------- 启动 ---------------- */
+/* 作物清单取**图谱全集**（不是"我被授权可种"的那份）：
+   算收益是为了比较"种哪个划算"，只给授权作物就没法决策了 ——
+   与知识问答、四类处方同一个口径（这两处也不受授权限制）。 */
+function loadCrops(){
+    const fail = msg => {
+        $('cropSel').innerHTML = `<option value="">${esc(msg)}</option>`;
+        // 图谱服务可能刚起来：给一个"重新加载"的入口，不用刷新整页
+        $('formHint').className = 'hint';
+        $('formHint').innerHTML = '<a href="javascript:;" id="reloadCrops" ' +
+            'style="color:#2F5597">重新加载作物清单</a>';
+        const a = $('reloadCrops');
+        if (a) a.addEventListener('click', () => { $('formHint').textContent = ''; loadCrops(); });
+    };
+    fetch('/api/kg/crops').then(r => r.json()).then(list => {
+        if (!Array.isArray(list) || !list.length){
+            fail('读不到作物清单，确认图谱服务在运行后点下面重新加载');
+            return;
+        }
+        const groups = {};
+        list.forEach(x => {
+            const name = x && x.name;
+            if (!name) return;
+            const c = x.category || '其他';
+            CROP_CAT[name] = c;                       // 记住类别，做参考成本的第二层兜底
+            (groups[c] = groups[c] || []).push(name);
+        });
+        let html = '<option value="">请选择作物…</option>';
+        Object.keys(groups).forEach(c => {
+            html += `<optgroup label="${esc(c)}">` +
+                groups[c].map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('') +
+                '</optgroup>';
+        });
+        $('cropSel').innerHTML = html;
+        // 作物清单可能比地块清单回来得晚：补一次预选，顺便把地块上的作物名补进下拉
+        applyWantedPlot();
+    }).catch(e => fail('作物清单加载失败：' + e.message));
+}
+
+/* 地块清单：成功后填下拉；URL 带 ?plot= 的（从地块详情页"去测算"跳来）自动选中并带出作物/面积。
+   ⚠ 作物清单是另一个异步请求，两边谁先回来不一定 —— 所以 loadCrops 成功后也要再试一次。 */
+function loadPlots(){
+    const sel = $('plotSel');
+    fetch('/api/plot/list').then(r => r.json()).then(d => {
+        PLOTS = (d && d.plots) || [];
+        if (!PLOTS.length){
+            sel.innerHTML = '<option value="">你还没有地块档案</option>';
+            sel.title = '在「物候期提醒」页建档后，这里就能直接带出作物和面积';
+            return;
+        }
+        sel.innerHTML = '<option value="">不关联地块（只做方案对比）</option>' +
+            PLOTS.map(p => `<option value="${p.id}">${esc(p.plot_name)}（${esc(p.crop || '未填作物')}` +
+                `${p.area_mu ? ' · ' + fixed(p.area_mu, 1) + ' 亩' : ''}）</option>`).join('');
+        applyWantedPlot();
+    }).catch(() => {
+        sel.innerHTML = '<option value="">地块清单读不到，可手动填写</option>';
+    });
+}
+
+/* 只在 URL 预选的目标地块出现在下拉里时才生效，且只做一次 */
+function applyWantedPlot(){
+    if (WANT_APPLIED || !WANT_PLOT) return;
+    if (!plotById(WANT_PLOT)) return;          // 作物清单还没回来 / 地块不存在 → 等下一次
+    WANT_APPLIED = true;
+    $('plotSel').value = WANT_PLOT;
+    applyPlotFill();
+}
+
+$('plotSel').addEventListener('change', function(){
+    WANT_APPLIED = true;                        // 用户手动选过就不再被 URL 覆盖
+    applyPlotFill();
+});
+
+function load(){
+    fetch('/api/econ/list').then(r => r.json()).then(d => render(d))
+      .catch(e => {
+          $('list').innerHTML = `<div class="pane-empty">读取失败：${esc(e.message)}</div>`;
+      });
+}
+
+loadCrops();
+loadPlots();
+loadCostRef();     /* 成本参考值：整包拉一次，之后选作物本地查表 */
+load();
+</script>
+</body>
+</html>

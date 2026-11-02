@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>历史记录 · 我提过的问题与反馈</title>
+<style>
+:root{
+    --blue:#2F5597; --blue-dark:#24406f; --green:#3f7d5f;
+    --ink:#1f2937; --ink-2:#4b5563; --ink-3:#94a3b8; --line:#e6ebf2;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+    font-family:"Microsoft YaHei","PingFang SC",system-ui,-apple-system,sans-serif;
+    background:#f4f6f9; color:var(--ink); min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+}
+header{
+    background:linear-gradient(100deg,#2F5597,#3f7d5f); color:#fff;
+    padding:12px 22px; display:flex; align-items:baseline; gap:15px; flex-wrap:wrap;
+}
+header h1{font-size:18px;font-weight:600}
+header span{font-size:12.5px;opacity:.88}
+header button{
+    margin-left:auto; font-family:inherit; font-size:12.5px; color:#fff;
+    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.5);
+    padding:4px 12px; border-radius:7px; cursor:pointer; transition:.15s;
+}
+header button:hover{background:rgba(255,255,255,.26)}
+header button:disabled{opacity:.5; cursor:not-allowed}
+.wrap{max-width:1000px;margin:0 auto;padding:16px 16px 40px}
+
+/* ---------------- 概览条 ---------------- */
+.sum{
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+    background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:13px 18px; margin-bottom:13px; font-size:13px; color:var(--ink-2);
+}
+.sum > div{display:flex; align-items:baseline; gap:5px}
+.sum b{font-size:17px; font-weight:600; color:var(--blue)}
+.sum .up b{color:#256b45}
+.sum .down b{color:#b3261e}
+.sum .sep{color:#dbe3ec; margin:0 3px}
+.sum .hot{margin-left:auto; font-size:12.5px; color:var(--ink-3); display:flex; align-items:center; gap:6px}
+.sum .hot i{font-style:normal; background:#f4f7fb; border-radius:5px; padding:2px 8px; color:#475569}
+
+/* ---------------- 筛选与搜索 ---------------- */
+.bar{
+    display:flex; gap:9px; align-items:center; flex-wrap:wrap;
+    background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:11px 15px; margin-bottom:14px;
+}
+.tab{
+    font-family:inherit; font-size:12.5px; padding:5px 12px; border-radius:7px;
+    border:1px solid #e2e8f0; background:#fff; color:#475569; cursor:pointer; transition:.15s;
+}
+.tab:hover{border-color:var(--blue); color:var(--blue)}
+.tab.on{background:var(--blue); border-color:var(--blue); color:#fff; font-weight:600}
+.bar input{
+    flex:1; min-width:160px; padding:7px 12px; border:1px solid #cbd5e1;
+    border-radius:7px; font-size:13px; font-family:inherit; outline:none; background:#fff;
+}
+.bar input:focus{border-color:var(--blue); box-shadow:0 0 0 3px rgba(47,85,151,.12)}
+/* 日期框不吃 flex:1（那是给关键词搜索框的），否则两个日期框会被拉得老长 */
+.bar input.din{flex:none; width:140px}
+.flab{font-size:12.5px; color:var(--ink-3)}
+.tab.rng{background:#f7f9fc}
+
+/* ---------------- 分页 ---------------- */
+.pager{display:flex; gap:6px; align-items:center; justify-content:center; flex-wrap:wrap; margin:16px 0 4px}
+.pager .pg{
+    min-width:32px; padding:5px 10px; border-radius:7px; font-size:12.5px; font-family:inherit;
+    border:1px solid #e2e8f0; background:#fff; color:#475569; cursor:pointer; transition:.15s;
+}
+.pager .pg:hover:not([disabled]){border-color:var(--blue); color:var(--blue)}
+.pager .pg.on{background:var(--blue); border-color:var(--blue); color:#fff; font-weight:600}
+.pager .pg[disabled]{opacity:.4; cursor:not-allowed}
+.pager .pinfo{margin-left:6px; font-size:12.5px; color:var(--ink-3)}
+
+/* ---------------- 记录卡片 ---------------- */
+.list{display:flex; flex-direction:column; gap:11px}
+.hi{
+    background:#fff; border:1px solid var(--line); border-left:3px solid var(--blue);
+    border-radius:12px; padding:14px 17px;
+}
+.hi.fb-helpful{border-left-color:#3f7d5f}
+.hi.fb-unhelpful{border-left-color:#d97706}
+.hi-top{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.tag{font-size:11px; border-radius:5px; padding:2px 8px; background:#eef3fb; color:var(--blue)}
+.tag.basic{background:#f1f5f9; color:#475569}
+.tag.pest{background:#fdeaea; color:#b3261e}
+.tag.fertilizer{background:#e8f0fb; color:#1f4b8f}
+.tag.farm{background:#e8f5ee; color:#256b45}
+.tag.planning{background:#fdf1e3; color:#9a5b12}
+/* 拍照识病：留个紫色，一眼能从列表里和「防治」区分开 */
+.tag.diagnose{background:#f0ebfa; color:#5b3fa8}
+/* 拍照记录的缩略图（点一下看大图） */
+.hi-img{
+    display:block; width:132px; height:99px; object-fit:cover; margin:0 0 8px;
+    border:1px solid var(--line); border-radius:8px; cursor:zoom-in; background:#f8fafc;
+}
+.hi-img:hover{border-color:var(--blue)}
+.hi-time{font-size:12px; color:var(--ink-3)}
+.hi-fb{margin-left:auto; font-size:11.5px; border-radius:5px; padding:2px 8px}
+.hi-fb.helpful{background:#e8f5ee; color:#256b45}
+.hi-fb.unhelpful{background:#fdf1e3; color:#9a5b12}
+/* 管理端视角：标出这条记录是哪个用户端问的（用户端自己看时不会出现） */
+.hi-user{
+    font-size:11.5px; font-weight:600; border-radius:5px; padding:2px 8px;
+    background:#eef3fb; color:var(--blue); border:1px solid #dbe7f8;
+}
+select.usel{
+    font-family:inherit; font-size:12.5px; padding:6px 10px; color:#475569;
+    border:1px solid #cbd5e1; border-radius:7px; background:#fff;
+    outline:none; cursor:pointer; transition:.15s;
+}
+select.usel:hover{border-color:var(--blue)}
+select.usel:focus{border-color:var(--blue); box-shadow:0 0 0 3px rgba(47,85,151,.12)}
+.hi-q{font-size:14px; font-weight:600; color:var(--ink); margin:9px 0 7px; line-height:1.6}
+.hi-a{
+    font-size:13px; line-height:1.85; color:var(--ink-2);
+    max-height:82px; overflow:hidden; position:relative;
+}
+.hi.open .hi-a{max-height:none}
+.hi-a h2{font-size:14px; color:var(--blue); margin:7px 0 5px}
+.hi-a ul,.hi-a ol{margin:5px 0 5px 20px}
+.hi-a table{border-collapse:collapse; width:100%; margin:7px 0; font-size:12.5px}
+.hi-a th,.hi-a td{border:1px solid #e2e8f0; padding:5px 8px; text-align:left}
+.hi-a th{background:#f1f5f9}
+.hi-mask{
+    height:26px; margin-top:-26px; position:relative;
+    background:linear-gradient(180deg,rgba(255,255,255,0),#fff);
+}
+.hi.open .hi-mask{display:none}
+.hi-acts{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px; padding-top:9px; border-top:1px solid #f1f5f9}
+.hi-acts button{
+    font-family:inherit; font-size:12px; padding:4px 12px; border-radius:6px;
+    border:1px solid #e2e8f0; background:#fff; color:#475569; cursor:pointer; transition:.15s;
+}
+.hi-acts button:hover{border-color:var(--blue); color:var(--blue)}
+.hi-acts button.danger:hover{border-color:#b3261e; color:#b3261e}
+.hi-acts .src{font-size:12px; color:var(--ink-3); margin-left:auto}
+.hi-src{display:none; margin-top:8px; font-size:12.5px; color:#475569; line-height:1.9;
+        background:#f8fafc; border:1px solid #eef2f7; border-radius:8px; padding:9px 12px}
+.hi.open-src .hi-src{display:block}
+.hi-src div{padding:1px 0}
+
+/* ---------------- 空态 ---------------- */
+.empty-box{
+    background:#fff; border:1px dashed #cfdbea; border-radius:12px;
+    padding:20px 22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+}
+.empty-box p{flex:1; min-width:220px; font-size:13px; color:var(--ink-2); line-height:1.75}
+.empty-box a{
+    font-size:13px; color:#fff; background:var(--blue); text-decoration:none;
+    padding:9px 17px; border-radius:9px; white-space:nowrap;
+}
+.empty-box a:hover{background:var(--blue-dark)}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #cbd5e1;border-top-color:#2F5597;
+      border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+@media (max-width:720px){
+    .sum .hot{margin-left:0; width:100%}
+    .hi-fb{margin-left:0}
+    .hi-acts .src{margin-left:0; width:100%}
+}
+
+/* ---------------- 导出按钮（顶部右侧） ---------------- */
+header .hacts{margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+header a.hbtn{
+    font-size:12.5px; color:#fff; text-decoration:none; cursor:pointer;
+    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.5);
+    padding:4px 12px; border-radius:7px; transition:.15s; white-space:nowrap;
+}
+header a.hbtn:hover{background:rgba(255,255,255,.26)}
+header a.hbtn.off{opacity:.45; pointer-events:none}
+
+/* ---------------- 数据统计（四张图） ---------------- */
+.charts{
+    background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; margin-bottom:14px;
+}
+.ch-head{display:flex; align-items:baseline; gap:9px; margin-bottom:11px}
+.ch-head h2{font-size:14px; font-weight:600; color:var(--ink)}
+.ch-head > span{font-size:12px; color:var(--ink-3)}
+.ch-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.ch{border:1px solid #eef2f7; border-radius:10px; padding:10px 12px; background:#fcfdff}
+.ch-t{
+    font-size:12.5px; color:var(--ink-2); font-weight:600;
+    margin-bottom:2px; display:flex; align-items:baseline; gap:7px;
+}
+.ch-t span{font-size:11px; font-weight:400; color:var(--ink-3)}
+.cv{height:212px}
+/* 图表的空态文案：四张图共用一个样式，别各写各的 */
+.ch-none{text-align:center; padding:74px 0; color:var(--ink-3); font-size:13px}
+/* 词云：按词频调字号与深浅，纯 CSS 排布（不依赖任何扩展） */
+.wc-box{
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+    gap:4px 12px; overflow:hidden; padding:6px 2px;
+}
+.wc{font-weight:600; line-height:1.2; cursor:default; white-space:nowrap; transition:.15s}
+.wc:hover{filter:brightness(.8)}
+.wc em{font-style:normal; font-size:10px; margin-left:3px; opacity:.5; font-weight:400}
+.wc1{color:#2F5597} .wc2{color:#3f7d5f} .wc3{color:#96631a}
+.wc4{color:#7a5f9e} .wc5{color:#b3261e}
+@media (max-width:860px){ .ch-grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+    {% include '_nav.html' %}
+<header>
+    <h1>历史记录</h1>
+    {# 管理端换成「名下用户端」的视角，所以标题下那句话也跟着换 #}
+    <span>{% if is_admin %}名下用户端提过的问题、生成过的方案 —— 每条都标明是谁问的{% else %}我提过的问题、生成过的方案，以及我对答案的评价{% endif %}</span>
+    <div class="hacts">
+        {# 拍照识病的记录导出时会把照片一起嵌进文档（照片已删则写一行说明） #}
+        <a class="hbtn" id="expDocx" href="/api/history/export?fmt=docx" title="拍照识病的记录会带上照片">导出 Word（含照片）</a>
+        <a class="hbtn" id="expPdf" href="/api/history/export?fmt=pdf" title="拍照识病的记录会带上照片">导出 PDF（含照片）</a>
+        <button id="clearBtn" type="button" style="display:none">清空历史</button>
+    </div>
+</header>
+
+<div class="wrap">
+    <!-- 概览 -->
+    <section class="sum" id="sum" style="display:none">
+        <div><b id="sTotal">0</b>条记录</div>
+        <div class="sep">·</div>
+        <div class="up"><b id="sUp">0</b>条有帮助</div>
+        <div class="sep">·</div>
+        <div class="down"><b id="sDown">0</b>条没帮助</div>
+        {% if is_admin %}
+        <div class="sep">·</div>
+        <div><b id="sUsers">0</b>个用户端</div>
+        {% endif %}
+        <div class="hot" id="sHot"></div>
+    </section>
+
+    <!-- 筛选与搜索 -->
+    <div class="bar" id="bar" style="display:none">
+        <button class="tab on" data-type="all" type="button">全部</button>
+        <button class="tab" data-type="general" type="button">知识问答</button>
+        <button class="tab" data-type="pest" type="button">病虫害防治</button>
+        <button class="tab" data-type="fertilizer" type="button">水肥调控</button>
+        <button class="tab" data-type="farm" type="button">农事管理</button>
+        <button class="tab" data-type="planning" type="button">生产规划</button>
+        <button class="tab" data-type="basic" type="button">基础问答</button>
+        <button class="tab" data-type="diagnose" type="button">拍照识病</button>
+        {% if is_admin %}
+        <select id="userSel" class="usel" title="按用户端筛选">
+            <option value="">全部用户端</option>
+        </select>
+        {% endif %}
+        <input id="kw" placeholder="搜索问题或答案里的关键词…">
+        <span class="flab">日期</span>
+        <input type="date" id="dfrom" class="din" title="起始日期（含当天）">
+        <span class="flab">至</span>
+        <input type="date" id="dto" class="din" title="结束日期（含当天）">
+        <button class="tab rng" type="button" data-range="7">近 7 天</button>
+        <button class="tab rng" type="button" data-range="30">近 30 天</button>
+        <button class="tab rng" type="button" data-range="all">不限</button>
+        <span class="flab">每页</span>
+        <select id="sizeSel" class="usel" title="每页显示条数">
+            <option value="10">10 条</option>
+            <option value="20" selected>20 条</option>
+            <option value="50">50 条</option>
+            <option value="100">100 条</option>
+        </select>
+    </div>
+
+    <!-- 数据统计：柱状图 / 折线图 / 饼图 / 词云（跟着上面的筛选一起变） -->
+    <section class="charts" id="charts" style="display:none">
+        <div class="ch-head">
+            <h2>数据统计</h2>
+            <span id="chNote">基于当前筛选</span>
+        </div>
+        <div class="ch-grid">
+            <div class="ch">
+                <div class="ch-t">记录分布<span>柱状图</span></div>
+                <div class="cv" id="chBar"></div>
+            </div>
+            <div class="ch">
+                <div class="ch-t">近 14 天提问趋势<span>折线图</span></div>
+                <div class="cv" id="chLine"></div>
+            </div>
+            <div class="ch">
+                <div class="ch-t">类型占比<span>饼图</span></div>
+                <div class="cv" id="chPie"></div>
+            </div>
+            <div class="ch">
+                <div class="ch-t">问题高频词<span>词云</span></div>
+                <div class="cv wc-box" id="chWords"></div>
+            </div>
+        </div>
+    </section>
+
+    <div class="empty-box" id="loading">
+        <p>正在读取历史记录…</p>
+    </div>
+
+    <div class="list" id="list"></div>
+
+    {# 分页：一次只拉一页（默认 20 条），不再一口气 limit=100 全塞到页面上 #}
+    <div class="pager" id="pager"></div>
+</div>
+
+{# 图表用本地 echarts（不连外网），历史页的柱状 / 折线 / 饼图都由它画 #}
+<script src="{{ url_for('static', filename='echarts.min.js') }}"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+/* 管理端视角：列表会带「是谁问的」，并且不给删除入口（只读浏览名下用户端的记录） */
+const IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+let USERSEL = '';
+let HAVE = false;                 // 当前筛选下有没有记录（决定导出按钮是否可点）
+const esc = s => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+/* 与问答页同一套极简 markdown 渲染（只支持标题/列表/表格/加粗/行内代码） */
+function inline(s) {
+    return esc(s).replace(/`([^`]+)`/g, '<code>$1</code>')
+                 .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+}
+function md2html(md) {
+    const lines = String(md || '').split('\n'), out = [];
+    let inTable = false, inUl = false, inOl = false;
+    const closeList = () => {
+        if (inUl) { out.push('</ul>'); inUl = false; }
+        if (inOl) { out.push('</ol>'); inOl = false; }
+    };
+    lines.forEach(raw => {
+        const line = raw.replace(/\s+$/, '');
+        if (/^\s*\|/.test(line)) {
+            closeList();
+            const cells = line.split('|').slice(1, -1).map(c => c.trim());
+            if (!inTable) {
+                out.push('<table><tr>' + cells.map(c => `<th>${inline(c)}</th>`).join('') + '</tr>');
+                inTable = true;
+            } else if (!cells.every(c => /^:?-{2,}:?$/.test(c) || c === '')) {
+                out.push('<tr>' + cells.map(c => `<td>${inline(c)}</td>`).join('') + '</tr>');
+            }
+            return;
+        }
+        if (inTable) { out.push('</table>'); inTable = false; }
+        if (/^#{1,3}\s+/.test(line)) { closeList(); out.push(`<h2>${inline(line.replace(/^#{1,3}\s+/, ''))}</h2>`); return; }
+        if (/^>\s?/.test(line)) { closeList(); out.push(`<blockquote>${inline(line.replace(/^>\s?/, ''))}</blockquote>`); return; }
+        if (/^\s*[-*]\s+/.test(line)) {
+            if (!inUl) { closeList(); out.push('<ul>'); inUl = true; }
+            out.push(`<li>${inline(line.replace(/^\s*[-*]\s+/, ''))}</li>`); return;
+        }
+        if (/^\s*\d+[.、]\s+/.test(line)) {
+            if (!inOl) { closeList(); out.push('<ol>'); inOl = true; }
+            out.push(`<li>${inline(line.replace(/^\s*\d+[.、]\s+/, ''))}</li>`); return;
+        }
+        if (!line.trim()) { closeList(); return; }
+        closeList();
+        out.push(`<p>${inline(line)}</p>`);
+    });
+    if (inTable) out.push('</table>');
+    closeList();
+    return out.join('\n');
+}
+
+/* 类型 -> 标签样式与「去对应页面」的落点 */
+const TYPE_META = {
+    general:    { cls: 'basic',      go: '/qa-page' },
+    basic:      { cls: 'basic',      go: '/qa-page' },
+    pest:       { cls: 'pest',       go: '/advice/pest' },
+    fertilizer: { cls: 'fertilizer', go: '/advice/fertilizer' },
+    farm:       { cls: 'farm',       go: '/advice/farm' },
+    planning:   { cls: 'planning',   go: '/advice/planning' },
+    // 拍照识病：不能"再问一次"，只能回拍照页重拍
+    diagnose:   { cls: 'diagnose',   go: '/diagnose-page' }
+};
+
+let TYPE = 'all';
+let KW = '';
+/* 日期区间（YYYY-MM-DD，含当天）。**默认就带上今天的日期**：
+   空着时输入框只会显示浏览器原生的 "yyyy/mm/dd" 占位（那串没法用 CSS 改掉），
+   农户看了不知道要填什么。进来即"今天 → 今天"，可手动改，也可点「不限」清空。
+   DATE_AUTO 记住"这个日期是系统默认带的、用户还没动过" —— 空列表时据此决定
+   该提示"还没有记录、去提一个问题"（初始态），还是"没有符合条件的记录"（筛过了）。 */
+let DFROM = ymd(new Date()), DTO = ymd(new Date());
+let DATE_AUTO = true;
+let PAGE = 1, SIZE = 20;         // 分页：一次只拉一页，默认 20 条
+let timer = null;
+
+/* 本地日期 YYYY-MM-DD —— ⚠ 别用 toISOString()，那是 UTC，东八区早上 8 点前会差一天 */
+function ymd(d) {
+    const p = n => (n < 10 ? '0' : '') + n;
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+function daysAgo(n) {
+    const d = new Date();
+    d.setDate(d.getDate() - (n - 1));
+    return ymd(d);
+}
+
+/* 页码按钮：页面多的时候只画中间几页，两头用省略号 */
+function pageNumbers(page, pages) {
+    if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1);
+    const out = [1];
+    const s = Math.max(2, page - 1), e = Math.min(pages - 1, page + 1);
+    if (s > 2) out.push('...');
+    for (let i = s; i <= e; i++) out.push(i);
+    if (e < pages - 1) out.push('...');
+    out.push(pages);
+    return out;
+}
+function renderPager(total, page, pages) {
+    const el = $('pager');
+    if (!el) return;
+    if (!total) { el.innerHTML = ''; return; }
+    if (pages <= 1) {
+        el.innerHTML = `<span class="pinfo">共 ${total} 条</span>`;
+        return;
+    }
+    const btn = (p, label, cls, dis) =>
+        `<button type="button" class="pg ${cls || ''}" data-page="${p}"${dis ? ' disabled' : ''}>${label}</button>`;
+    el.innerHTML =
+        btn(page - 1, '上一页', '', page <= 1) +
+        pageNumbers(page, pages).map(n =>
+            n === '...' ? '<span class="pinfo">…</span>' : btn(n, n, n === page ? 'on' : '')
+        ).join('') +
+        btn(page + 1, '下一页', '', page >= pages) +
+        `<span class="pinfo">共 ${total} 条 · 第 ${page} / ${pages} 页</span>`;
+}
+/* 任何筛选条件变了都要回到第 1 页 —— 否则会出现"第 5 页空空如也" */
+function resetPage() { PAGE = 1; }
+
+function typeLabel(it) {
+    return it.plan_name || (TYPE_META[it.plan_type] ? '知识问答' : it.plan_type || '记录');
+}
+
+function card(it) {
+    const meta = TYPE_META[it.plan_type] || TYPE_META.general;
+    const answer = it.llm_answer || it.kg_answer || '（无答案内容）';
+    const fb = it.feedback || {};
+    const fbTag = fb.rating === 'helpful'
+        ? '<span class="hi-fb helpful">有帮助</span>'
+        : (fb.rating === 'unhelpful' ? '<span class="hi-fb unhelpful">没帮助</span>' : '');
+    // 问答类可以带着原问题跳回去再问一次；处方类是下拉选条件，只能回对应页面
+    const again = it.plan_type === 'basic' || it.plan_type === 'general'
+        ? `<button type="button" onclick="again(${it.id})">再问一次</button>`
+        : `<button type="button" onclick="location.href='${meta.go}'">去这个功能</button>`;
+    // 管理端：标题行标出这条记录是哪位用户端留下的；删除只留给记录本人
+    const who = (IS_ADMIN && it.username) ? `<span class="hi-user">${esc(it.username)}</span>` : '';
+    const delBtn = IS_ADMIN ? ''
+        : `<button type="button" class="danger" onclick="del(${it.id})">删除</button>`;
+    return `<div class="hi${fb.rating ? ' fb-' + fb.rating : ''}" id="hi-${it.id}">
+        <div class="hi-top">
+            <span class="tag ${meta.cls}">${esc(typeLabel(it))}</span>
+            ${who}
+            <span class="hi-time">${esc(it.create_time)}</span>
+            ${fbTag}
+        </div>
+        <div class="hi-q">${esc(it.question)}</div>
+        ${it.image ? `<img class="hi-img" src="${esc(it.image)}" alt="拍照识病的照片缩略图"
+              title="点击看大图" onclick="window.open(this.src)">` : ''}
+        <div class="hi-a" id="a-${it.id}">${md2html(answer)}</div>
+        <div class="hi-mask"></div>
+        ${fb.comment ? `<div class="hi-src" style="display:block;margin-top:8px">
+            <div><b>我的纠错：</b>${esc(fb.comment)}</div></div>` : ''}
+        <div class="hi-src" id="s-${it.id}">
+            ${(it.sources || []).length
+                ? '<div><b>知识溯源（' + it.sources.length + ' 条）</b></div>' +
+                  it.sources.map(s => `<div>${esc(s)}</div>`).join('')
+                : '<div>这条记录没有引用图谱关系</div>'}
+        </div>
+        <div class="hi-acts">
+            <button type="button" onclick="toggle(${it.id})" id="tg-${it.id}">展开全文</button>
+            <button type="button" onclick="toggleSrc(${it.id})">看溯源</button>
+            ${again}
+            ${delBtn}
+            <span class="src">${(it.sources || []).length ? '引用图谱 ' + it.sources.length + ' 条' : ''}</span>
+        </div>
+    </div>`;
+}
+
+function toggle(id) {
+    const el = $('hi-' + id);
+    el.classList.toggle('open');
+    $('tg-' + id).textContent = el.classList.contains('open') ? '收起' : '展开全文';
+}
+function toggleSrc(id) {
+    $('hi-' + id).classList.toggle('open-src');
+}
+function again(id) {
+    // 把问题带到问答页，自动填进输入框（不自动提交，用户可改）
+    const q = document.querySelector('#hi-' + id + ' .hi-q');
+    location.href = '/qa-page?q=' + encodeURIComponent(q ? q.textContent : '');
+}
+function del(id) {
+    if (!confirm('删除这条记录？（不影响其他记录）')) return;
+    fetch('/api/history/' + id, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.ok) throw new Error(d.message || '删除失败');
+            load();
+        })
+        .catch(e => alert('删除失败：' + e.message));
+}
+
+/* ================================================================
+   数据统计：柱状图 / 折线图 / 饼图 / 词云
+   数据来自 /api/history/stats（跟着类型筛选、关键词、用户端一起变）
+   前三张用本地 echarts；词云用纯 CSS 按词频调字号与深浅，不依赖任何扩展
+   ================================================================ */
+const TYPE_LABEL = {
+    general: '知识问答', basic: '基础问答', pest: '病虫害防治',
+    fertilizer: '水肥调控', farm: '农事管理', planning: '生产规划',
+    diagnose: '拍照识病'
+};
+const CH = {};
+function chartOf(id){
+    const el = $(id);
+    if (!el) return null;
+    if (!CH[id]) CH[id] = echarts.init(el);
+    return CH[id];
+}
+window.addEventListener('resize', () => Object.keys(CH).forEach(k => CH[k].resize()));
+
+/* 导出按钮的链接始终带着当前筛选（类型 / 关键词 / 用户端） */
+function syncExport(){
+    /* 导出跟着当前筛选（含日期区间）；导出本身不走分页 —— 要的就是筛选后的全部 */
+    const qs = new URLSearchParams({ type: TYPE, q: KW });
+    if (DFROM) qs.set('from', DFROM);
+    if (DTO) qs.set('to', DTO);
+    if (USERSEL) qs.set('user', USERSEL);
+    const base = '/api/history/export?' + qs.toString();
+    $('expDocx').href = base + '&fmt=docx';
+    $('expPdf').href = base + '&fmt=pdf';
+    $('expDocx').classList.toggle('off', !HAVE);
+    $('expPdf').classList.toggle('off', !HAVE);
+}
+
+function loadStats(){
+    /* 统计图跟列表同条件（后端之前根本没读 type/q，数字一直是全量，对不上） */
+    const p = { type: TYPE, q: KW };
+    if (DFROM) p.from = DFROM;
+    if (DTO) p.to = DTO;
+    if (USERSEL) p.user = USERSEL;
+    fetch('/api/history/stats?' + new URLSearchParams(p).toString())
+        .then(r => r.json())
+        .then(d => {
+            if (d && d.ok) drawCharts(d);
+            else drawStatsEmpty((d && d.message) || '统计读取失败');
+        })
+        .catch(e => drawStatsEmpty('统计读取失败：' + e.message));
+}
+
+function drawStatsEmpty(msg){
+    $('charts').style.display = '';
+    $('chNote').textContent = msg;
+    ['chBar', 'chLine', 'chPie'].forEach(id => {
+        if (CH[id]) { CH[id].dispose(); delete CH[id]; }     // 先销毁再改 DOM，否则 echarts 实例会指向已丢弃的 canvas
+        const el = $(id);
+        if (el) el.innerHTML = `<div class="ch-none">${esc(msg)}</div>`;
+    });
+    $('chWords').innerHTML = `<div class="ch-none">${esc(msg)}</div>`;
+}
+
+const AXIS_LINE = { lineStyle: { color: '#e2e8f0' } };
+const SPLIT_LINE = { lineStyle: { color: '#eef2f7' } };
+
+function drawCharts(d){
+    $('charts').style.display = '';
+    const recent = (d.daily || []).reduce((a, b) => a + (b.count || 0), 0);
+    $('chNote').textContent = (d.is_admin ? '名下用户端 · ' : '') +
+        `共 ${d.total || 0} 条 · 近 14 天 ${recent} 条`;
+
+    const byType = d.by_type || {};
+    const typeRows = Object.keys(byType)
+        .map(k => ({ name: TYPE_LABEL[k] || k, value: byType[k] }))
+        .sort((a, b) => b.value - a.value);
+    const byUser = d.by_user || {};
+    const userRows = Object.keys(byUser)
+        .map(k => ({ name: k, value: byUser[k] }))
+        .sort((a, b) => b.value - a.value);
+
+    // 一条记录都没有时，柱/折线/饼画出来分别是"空白 / 一条 0 线 / 一个空环"，
+    // 看着像坏了；统一换成一句人话（词云自己也有空态文案，一并交给 drawWords）
+    if (!d.total) {
+        ['chBar', 'chLine', 'chPie'].forEach(id => {
+            if (CH[id]) { CH[id].dispose(); delete CH[id]; }
+            const el = $(id);
+            if (el) el.innerHTML = '<div class="ch-none">还没有记录，这里暂时没有数据</div>';
+        });
+        drawWords(d.words || []);
+        return;
+    }
+
+    // 柱状：管理端看"各用户端"，用户端看"各类型"
+    const useUser = d.is_admin && userRows.length > 0;
+    const bars = useUser ? userRows : typeRows;
+    $('chBar').parentElement.querySelector('.ch-t').innerHTML =
+        (useUser ? '各用户端记录数' : '各类型记录数') + '<span>柱状图</span>';
+    const bar = chartOf('chBar');
+    if (bar) bar.setOption({
+        grid: { left: 6, right: 14, top: 26, bottom: 4, containLabel: true },
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        xAxis: { type: 'category', data: bars.map(b => b.name),
+                 axisLabel: { fontSize: 11, interval: 0, rotate: bars.length > 5 ? 24 : 0 },
+                 axisLine: AXIS_LINE, axisTick: { show: false } },
+        yAxis: { type: 'value', minInterval: 1, axisLabel: { fontSize: 11 }, splitLine: SPLIT_LINE },
+        series: [{ type: 'bar', data: bars.map(b => b.value), barMaxWidth: 32,
+                   itemStyle: { borderRadius: [5, 5, 0, 0], color: '#4a7bc8' },
+                   label: { show: true, position: 'top', fontSize: 11, color: '#475569' } }]
+    }, true);
+
+    // 折线：近 14 天提问趋势
+    const daily = d.daily || [];
+    const line = chartOf('chLine');
+    if (line) line.setOption({
+        grid: { left: 6, right: 16, top: 20, bottom: 4, containLabel: true },
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'category', boundaryGap: false, data: daily.map(x => x.label),
+                 axisLabel: { fontSize: 11 }, axisLine: AXIS_LINE, axisTick: { show: false } },
+        yAxis: { type: 'value', minInterval: 1, axisLabel: { fontSize: 11 }, splitLine: SPLIT_LINE },
+        series: [{ type: 'line', smooth: true, data: daily.map(x => x.count),
+                   symbolSize: 6, lineStyle: { width: 2.4, color: '#3f7d5f' },
+                   itemStyle: { color: '#3f7d5f' },
+                   areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                       { offset: 0, color: 'rgba(63,125,95,.30)' },
+                       { offset: 1, color: 'rgba(63,125,95,.02)' }]) } }]
+    }, true);
+
+    // 饼图：各类型占比
+    const pie = chartOf('chPie');
+    if (pie) pie.setOption({
+        tooltip: { trigger: 'item', formatter: '{b}：{c} 条（{d}%）' },
+        legend: { bottom: 0, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11 } },
+        color: ['#4a7bc8', '#3f7d5f', '#d99b2b', '#7a5f9e', '#c44f26', '#5b8fa8', '#8a9bb0'],
+        series: [{ type: 'pie', radius: ['42%', '64%'], center: ['50%', '43%'],
+                   data: typeRows, label: { fontSize: 11, formatter: '{b} {d}%' },
+                   labelLine: { length: 8, length2: 8 } }]
+    }, true);
+
+    drawWords(d.words || []);
+}
+
+/* 词云：字号跟词频走（开方压缩，免得高频词吃掉整版），颜色轮换 + 轻微倾斜 */
+function drawWords(words){
+    const box = $('chWords');
+    if (!words.length){
+        box.innerHTML = '<div class="ch-none">还没有足够的问题记录</div>';
+        return;
+    }
+    const vals = words.map(w => w.value);
+    const max = Math.max.apply(null, vals), min = Math.min.apply(null, vals);
+    box.innerHTML = words.map((w, i) => {
+        const t = (max === min) ? 1 : (w.value - min) / (max - min);
+        const size = 12 + Math.round(Math.sqrt(t) * 19);          // 12~31px
+        const rot = ((i * 29) % 5 - 2) * 1.2;                     // -2.4 ~ 2.4 度
+        return `<span class="wc wc${(i % 5) + 1}"
+                      style="font-size:${size}px;transform:rotate(${rot}deg)"
+                      title="${esc(w.name)}：${w.value} 次">${esc(w.name)}<em>${w.value}</em></span>`;
+    }).join('');
+}
+
+/* 管理端的「按用户端筛选」下拉：名字没变就不重建，免得打断用户正在做的选择 */
+function fillUsers(names) {
+    const sel = $('userSel');
+    if (!sel) return;
+    const sig = names.join('\u0001');
+    if (sel.dataset.sig === sig) return;
+    sel.dataset.sig = sig;
+    sel.innerHTML = '<option value="">全部用户端</option>' + names.map(n =>
+        `<option value="${esc(n)}"${n === USERSEL ? ' selected' : ''}>${esc(n)}</option>`).join('');
+}
+
+function load() {
+    const list = $('list');
+    list.innerHTML = '<div class="empty-box"><p><span class="spin"></span>正在读取…</p></div>';
+    $('pager').innerHTML = '';
+    const params = { type: TYPE, q: KW, page: PAGE, size: SIZE };
+    if (DFROM) params.from = DFROM;
+    if (DTO) params.to = DTO;
+    if (USERSEL) params.user = USERSEL;
+    const qs = new URLSearchParams(params);
+    fetch('/api/history?' + qs.toString()).then(r => r.json()).then(d => {
+        $('loading').style.display = 'none';
+        if (d.available === false) {
+            list.innerHTML = `<div class="empty-box">
+                <p>历史记录需要数据库连接，当前不可用：${esc(d.error || 'MySQL 未启动')}。<br>
+                   不影响提问与生成，只是暂时不记录。</p>
+            </div>`;
+            HAVE = false;
+            syncExport();
+            $('charts').style.display = 'none';
+            return;
+        }
+        const items = d.items || [];
+        const st = d.stats || {};
+        const total = d.total || 0, pages = d.pages || 1;
+        PAGE = d.page || 1;      // 后端会把越界页码夹回最后一页，以它为准
+        $('sum').style.display = '';
+        $('bar').style.display = '';
+        // 管理端只读浏览名下用户端的记录，不给清空入口
+        // ⚠ 用 total_all（不带筛选的总数）判断：当前筛选没结果 ≠ 没有记录，清空按钮不该消失
+        $('clearBtn').style.display = (!IS_ADMIN && (d.total_all || 0)) ? '' : 'none';
+        $('sTotal').textContent = st.total || 0;
+        $('sUp').textContent = st.helpful || 0;
+        $('sDown').textContent = st.unhelpful || 0;
+        if (IS_ADMIN) {
+            const names = d.scope_users || [];
+            fillUsers(names);
+            $('sUsers').textContent = names.length;
+        }
+        const hot = d.hot || [];
+        $('sHot').innerHTML = hot.length
+            ? '常问：' + hot.slice(0, 5).map(h => `<i>${esc(h.name)} ${h.count}</i>`).join(' ')
+            : '';
+
+        // 导出按钮跟着筛选走；统计图跟着筛选刷新
+        HAVE = !!st.total;
+        syncExport();
+        loadStats();
+
+        if (!items.length) {
+            /* 日期是系统默认带上的（用户没动过）→ 仍按"初始态"给引导文案，
+               别让人以为是自己筛错了。 */
+            const bare = TYPE === 'all' && !KW && !USERSEL
+                         && (DATE_AUTO || (!DFROM && !DTO));
+            const autoTip = (bare && DATE_AUTO)
+                ? `<p>当前日期范围是今天（${esc(DFROM)}）。想看更早的记录，点日期框右边的「不限」。</p>`
+                : '';
+            if (bare && IS_ADMIN) {
+                list.innerHTML = `<div class="empty-box">
+                    <p><b>名下用户端还没有留下记录。</b>他们登录后在「知识问答」或四类处方页用过一次，
+                       这里就会出现对应记录，并标明是哪位用户问的。</p>${autoTip}
+                </div>`;
+            } else if (bare) {
+                list.innerHTML = `<div class="empty-box">
+                       <p><b>还没有记录。</b>去「知识问答」提一个问题，或在四类处方页生成一份方案，
+                          这里会自动留下痕迹，也可以对结果打「有帮助 / 没帮助」。</p>${autoTip}
+                       <a href="/qa-page">去提一个问题</a>
+                   </div>`;
+            } else {
+                list.innerHTML = `<div class="empty-box"><p>没有符合条件的记录，换个筛选或关键词试试。</p></div>`;
+            }
+            return;
+        }
+        list.innerHTML = items.map(card).join('');
+        renderPager(total, PAGE, pages);
+    }).catch(e => {
+        $('loading').style.display = 'none';
+        list.innerHTML = `<div class="empty-box"><p>读取失败：${esc(e.message)}</p></div>`;
+    });
+}
+
+/* 筛选 / 搜索 */
+document.getElementById('bar').addEventListener('click', e => {
+    const t = e.target.closest('.tab'); if (!t) return;
+    /* 快捷日期（近 7 天 / 近 30 天 / 不限）也是 .tab 样式，先看是不是它 */
+    if (t.dataset.range) {
+        const n = t.dataset.range;
+        if (n === 'all') { DFROM = DTO = ''; }
+        else { DFROM = daysAgo(parseInt(n, 10) || 7); DTO = ymd(new Date()); }
+        DATE_AUTO = false;              // 用户明确选过范围了，不再是"系统默认"
+        $('dfrom').value = DFROM; $('dto').value = DTO;
+        resetPage(); load();
+        return;
+    }
+    document.querySelectorAll('.tab:not(.rng)').forEach(x => x.classList.remove('on'));
+    t.classList.add('on');
+    TYPE = t.dataset.type;
+    resetPage();
+    load();
+});
+$('kw').addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { KW = $('kw').value.trim(); resetPage(); load(); }, 320);
+});
+/* 日期区间：起止都含当天；只填一头也能用（只填起始 = 从那天至今）。
+   默认日期在这里写进输入框（HTML 里没写 value —— 值由上面的 DFROM/DTO 决定）。 */
+$('dfrom').value = DFROM; $('dto').value = DTO;
+$('dfrom').addEventListener('change', function () { DFROM = this.value; DATE_AUTO = false; resetPage(); load(); });
+$('dto').addEventListener('change', function () { DTO = this.value; DATE_AUTO = false; resetPage(); load(); });
+/* 每页条数 */
+$('sizeSel').addEventListener('change', function () {
+    SIZE = parseInt(this.value, 10) || 20;
+    resetPage();
+    load();
+});
+/* 翻页：页码由 renderPager 写在 data-page 上 */
+$('pager').addEventListener('click', e => {
+    const b = e.target.closest('.pg');
+    if (!b || b.disabled) return;
+    const p = parseInt(b.dataset.page, 10);
+    if (!p || p === PAGE) return;
+    PAGE = p;
+    load();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+/* 管理端：只看某一个用户端的记录（下拉由 load() 按接口返回的名下用户端填充） */
+if (IS_ADMIN && $('userSel')) {
+    $('userSel').addEventListener('change', function () {
+        USERSEL = this.value;
+        resetPage();
+        load();
+    });
+}
+$('clearBtn').addEventListener('click', function () {
+    if (!confirm('清空全部历史记录？评价也会一起清掉，此操作不可撤销。')) return;
+    this.disabled = true; this.textContent = '清空中…';
+    fetch('/api/history/clear', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.ok) throw new Error(d.message || '清空失败');
+            load();
+        })
+        .catch(e => alert('清空失败：' + e.message))
+        .finally(() => { this.disabled = false; this.textContent = '清空历史'; });
+});
+
+load();
+</script>
+</body>
+</html>
