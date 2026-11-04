@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>答案差评 · 管理端</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Microsoft YaHei","PingFang SC",system-ui,sans-serif; color: #1f2937; background: #f4f6f9; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+        .admin-wrap { padding: 26px 30px 40px; }
+        .admin-head h1 { font-size: 20px; font-weight: 600; }
+        .admin-head p { font-size: 13px; color: #94a3b8; margin-top: 7px; line-height: 1.7; }
+        .admin-head p b { color: #64748b; }
+        .msg.err { padding: 11px 15px; border-radius: 10px; font-size: 13.5px; margin: 14px 0; background: #fdeaea; color: #c0392b; border: 1px solid #f5c6c6; }
+
+        /* ---------------- 顶部四个汇总数字 ---------------- */
+        .kpis { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0 4px; }
+        .kpi { flex: 1; min-width: 148px; background: #fff; border: 1px solid #e6ebf2; border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 4px rgba(47,85,151,.06); }
+        .kpi .k { font-size: 12px; color: #94a3b8; }
+        .kpi .v { font-size: 22px; font-weight: 600; color: #1f2937; margin-top: 4px; }
+        .kpi .v small { font-size: 13px; font-weight: 500; color: #94a3b8; }
+        .kpi.bad .v { color: #c0392b; }
+        .kpi.warn .v { color: #b45309; }
+
+        /* ---------------- 筛选条 ---------------- */
+        .filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 18px 0 6px; }
+        .fb-tab { padding: 6px 14px; border-radius: 20px; font-size: 12.5px; text-decoration: none; color: #4b5563; background: #fff; border: 1px solid #e6ebf2; transition: background .15s, color .15s, border-color .15s; }
+        .fb-tab:hover { border-color: #c9d8ee; color: #2F5597; }
+        .fb-tab.on { background: #2F5597; border-color: #2F5597; color: #fff; font-weight: 600; }
+        .filters select { padding: 6px 10px; border: 1px solid #e6ebf2; border-radius: 9px; font-size: 12.5px; color: #4b5563; background: #fff; font-family: inherit; outline: none; }
+        .filters .hint { font-size: 12px; color: #a9b4c2; }
+
+        /* ---------------- 区块 ---------------- */
+        .sec { margin-top: 22px; }
+        .sec h2 { font-size: 15px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 7px; }
+        .sec h2 .dot { width: 6px; height: 6px; border-radius: 50%; background: #2F5597; }
+        .sec .sub { font-size: 12.5px; color: #94a3b8; margin-bottom: 12px; line-height: 1.6; }
+
+        .card { background: #fff; border: 1px solid #e6ebf2; border-radius: 13px; box-shadow: 0 1px 4px rgba(47,85,151,.06); padding: 15px 17px; margin-bottom: 12px; }
+        /* 同一个问题被反复差评：左侧红条，最先要改的就是这些 */
+        .card.hot { border-left: 3px solid #e23b3b; }
+        .card .q { font-size: 14px; font-weight: 600; color: #1f2937; line-height: 1.6; }
+        .card .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 7px; font-size: 12.5px; color: #94a3b8; }
+        .tag { font-size: 11.5px; padding: 2px 9px; border-radius: 20px; background: #f1f5f9; color: #64748b; }
+        .tag.type { background: #eef3fb; color: #2F5597; }
+        .tag.repeat { background: #fdeaea; color: #c0392b; font-weight: 600; }
+        .cmt { margin-top: 9px; padding: 10px 12px; background: #fff7ed; border: 1px solid #fde3c2; border-radius: 9px; font-size: 13px; color: #7c4a03; line-height: 1.65; white-space: pre-wrap; }
+        .cmt b { color: #92400e; }
+        .card .acts { margin-top: 10px; }
+        .lk { display: inline-block; font-size: 12.5px; color: #2F5597; text-decoration: none; border: 1px solid #d6e2f5; background: #f6f9ff; border-radius: 8px; padding: 5px 12px; cursor: pointer; }
+        .lk:hover { background: #eef3fb; }
+
+        /* ---------------- 按类型：横向条 ---------------- */
+        .bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+        .bar-row .nm { width: 116px; flex: none; font-size: 13px; color: #334155; }
+        .bar-row .track { flex: 1; height: 10px; background: #f1f5f9; border-radius: 6px; overflow: hidden; }
+        /* ⚠ 必须是 block：span 默认 inline，inline 元素吃不到 height，条会整根不显示 */
+        .bar-row .fill { display: block; height: 100%; min-width: 4px; background: #e08a2a; border-radius: 6px; }
+        .bar-row .num { width: 118px; flex: none; font-size: 12.5px; color: #64748b; text-align: right; }
+        .bar-row .num b { color: #b45309; }
+        .bar-row .nm .mini { font-style: normal; font-size: 10.5px; color: #b0bac6; margin-left: 4px; }
+
+        /* ---------------- 弹层：看原答案 ---------------- */
+        .mask { position: fixed; inset: 0; background: rgba(15,23,42,.42); z-index: 120; display: none; }
+        .mask.show { display: block; }
+        .modal { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); width: min(720px, 92vw); max-height: 82vh; overflow-y: auto; background: #fff; border-radius: 14px; z-index: 121; padding: 20px 22px; display: none; box-shadow: 0 18px 48px rgba(15,23,42,.25); }
+        .modal.show { display: block; }
+        .modal h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+        .modal .q { font-size: 13.5px; color: #334155; margin-bottom: 12px; line-height: 1.65; }
+        .modal .body { font-size: 13.5px; color: #334155; line-height: 1.8; white-space: pre-wrap; max-height: 46vh; overflow-y: auto; background: #f8fafc; border: 1px solid #eef2f7; border-radius: 10px; padding: 12px 14px; }
+        .modal .close { margin-top: 14px; padding: 8px 18px; border: none; border-radius: 9px; background: #2F5597; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+
+        .empty { text-align: center; color: #a9b4c2; padding: 34px 20px; background: #fff; border: 1px dashed #dbe3ec; border-radius: 14px; font-size: 14px; }
+
+        @media (max-width: 640px) {
+            .admin-wrap { padding: 20px 16px 32px; }
+            .bar-row .nm { width: 92px; }
+            .bar-row .num { width: 96px; }
+        }
+    </style>
+</head>
+<body>
+    {% include '_nav.html' %}
+
+    {% set s = (data or {}).get('summary') or {} %}
+    {% set groups = (data or {}).get('by_question') or [] %}
+    {% set types = (data or {}).get('by_type') or [] %}
+    {% set items = (data or {}).get('items') or [] %}
+    {% set label = '近 30 天' if days == '30' else ('近 90 天' if days == '90' else ('近一年' if days == '365' else '全部')) %}
+
+    <div class="admin-wrap">
+        <div class="admin-head">
+            <h1>答案差评</h1>
+            <p>农户点「没帮助」时写的纠错说明，以前只躺在数据库里没人看。这里按
+               <b>同一个问题被反复差评</b>聚出来 —— 排在最前面的，就是最该先改的答案。
+               当前登录：<b>{{ username }}</b>　·　统计范围：你 + 名下用户端　·　{{ label }}</p>
+        </div>
+
+        {% if err %}<div class="msg err">{{ err }}</div>{% endif %}
+
+        {% if data %}
+        <div class="kpis">
+            <div class="kpi"><div class="k">被评价过</div><div class="v">{{ s.rated }} <small>条</small></div></div>
+            <div class="kpi bad"><div class="k">标了「没帮助」</div><div class="v">{{ s.unhelpful }} <small>条</small></div></div>
+            <div class="kpi warn"><div class="k">差评率</div><div class="v">{{ s.rate }}<small>%</small></div></div>
+            <div class="kpi warn"><div class="k">写了纠错说明</div><div class="v">{{ s.with_comment }} <small>条</small></div></div>
+        </div>
+
+        <div class="filters">
+            <a class="fb-tab {{ 'on' if days == '30' }}" href="{{ url_for('admin_bad_answers', days='30', type=ptype) }}">近 30 天</a>
+            <a class="fb-tab {{ 'on' if days == '90' }}" href="{{ url_for('admin_bad_answers', days='90', type=ptype) }}">近 90 天</a>
+            <a class="fb-tab {{ 'on' if days == '365' }}" href="{{ url_for('admin_bad_answers', days='365', type=ptype) }}">近一年</a>
+            <a class="fb-tab {{ 'on' if days not in ('30','90','365') }}" href="{{ url_for('admin_bad_answers', days='all', type=ptype) }}">全部</a>
+            <select id="typeSel" onchange="location.href='{{ url_for('admin_bad_answers', days=days) }}&type='+this.value">
+                <option value="all" {{ 'selected' if ptype == 'all' }}>全部类型</option>
+                {% for t in types %}
+                <option value="{{ t.plan_type }}" {{ 'selected' if ptype == t.plan_type }}>{{ t.plan_name }}</option>
+                {% endfor %}
+            </select>
+            <span class="hint">归一化问题（去掉标点与空格）后聚类</span>
+        </div>
+
+        {# ---------- 1. 最该先改的问题 ---------- #}
+        <div class="sec">
+            <h2><span class="dot"></span>最该先改的问题</h2>
+            <div class="sub">按「同一个问法被标没帮助的次数」倒序。标着「反复差评」的是被不同的人、
+                或不同时间反复指出同一个问题 —— 改一条，受益的人最多。</div>
+            {% if groups %}
+                {% for g in groups %}
+                <div class="card {{ 'hot' if g.count >= 2 }}">
+                    <div class="q">{{ g.question }}</div>
+                    <div class="meta">
+                        <span class="tag repeat">{{ g.count }} 次没帮助</span>
+                        {% if g.count >= 2 %}<span class="tag repeat">反复差评</span>{% endif %}
+                        {% if g.plan_name %}<span class="tag type">{{ g.plan_name }}</span>{% endif %}
+                        <span>来自 {{ g.users|join('、') }}</span>
+                        {% if g.last %}<span>最近 {{ g.last }}</span>{% endif %}
+                    </div>
+                    {% for c in g.comments %}
+                    <div class="cmt"><b>农户说：</b>{{ c }}</div>
+                    {% endfor %}
+                    <div class="acts">
+                        <span class="lk" onclick="openAnswer({{ g.ids[0] }})">看原答案</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="empty">{% if s.rated %}还没有答案被标「没帮助」—— 这当然是好事{% else %}这个范围内还没有人评价过答案{% endif %}</div>
+            {% endif %}
+        </div>
+
+        {# ---------- 2. 哪类方案答得最差 ---------- #}
+        {% if types %}
+        <div class="sec">
+            <h2><span class="dot"></span>哪类方案差评最多</h2>
+            <div class="sub">条 = 差评率（该类型差评数 ÷ 该类型被评价数）。
+                只看绝对数会被「问得多的类型」带偏，所以这里一律带分母。</div>
+            <div class="card">
+                {% for t in types %}
+                <div class="bar-row">
+                    {# 分母太小的时候百分比没意义：3 条里差评 1 条也能算出 33%，标一句免得被误读 #}
+                    <span class="nm">{{ t.plan_name }}{% if t.rated < 3 %}<i class="mini">样本少</i>{% endif %}</span>
+                    <span class="track"><span class="fill" style="width:{{ t.rate|round(1) }}%"></span></span>
+                    <span class="num"><b>{{ t.bad }}</b> / {{ t.rated }} 条　{{ t.rate }}%</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {# ---------- 3. 差评明细 ---------- #}
+        <div class="sec">
+            <h2><span class="dot"></span>差评明细（新的在前）</h2>
+            <div class="sub">逐条列出被标「没帮助」的记录与纠错说明，最多 200 条。</div>
+            {% if items %}
+                {% for it in items %}
+                <div class="card">
+                    <div class="q">{{ it.question }}</div>
+                    <div class="meta">
+                        {% if it.plan_name %}<span class="tag type">{{ it.plan_name }}</span>{% endif %}
+                        <span>{{ it.username }}</span>
+                        <span>{{ it.time }}</span>
+                    </div>
+                    {% if it.comment %}<div class="cmt"><b>农户说：</b>{{ it.comment }}</div>{% endif %}
+                    <div class="acts"><span class="lk" onclick="openAnswer({{ it.id }})">看原答案</span></div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="empty">没有差评记录</div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="mask" id="mask" onclick="closeAnswer()"></div>
+    <div class="modal" id="modal">
+        <h3 id="mTitle">原答案</h3>
+        <div class="q" id="mQ"></div>
+        <div class="body" id="mBody">加载中…</div>
+        <button class="close" type="button" onclick="closeAnswer()">关闭</button>
+    </div>
+
+    <script>
+    /* 弹层取原答案：越界的 id 由后端返回 404，这里只管把错误文案显示出来 */
+    function openAnswer(id) {
+        var mask = document.getElementById('mask'), modal = document.getElementById('modal');
+        mask.classList.add('show'); modal.classList.add('show');
+        document.getElementById('mTitle').textContent = '原答案';
+        document.getElementById('mQ').textContent = '';
+        document.getElementById('mBody').textContent = '加载中…';
+        fetch('/api/admin/bad-answer/' + id).then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.error) { document.getElementById('mBody').textContent = d.error; return; }
+                document.getElementById('mTitle').textContent = (d.plan_name || '原答案') + '　·　' + (d.username || '') + '　·　' + (d.create_time || '');
+                document.getElementById('mQ').textContent = '问题：' + (d.question || '');
+                document.getElementById('mBody').textContent = d.llm_answer || d.kg_answer || '（这条记录没有存答案）';
+            }).catch(function () { document.getElementById('mBody').textContent = '加载失败，请重试'; });
+    }
+    function closeAnswer() {
+        document.getElementById('mask').classList.remove('show');
+        document.getElementById('modal').classList.remove('show');
+    }
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAnswer(); });
+    </script>
+</body>
+</html>

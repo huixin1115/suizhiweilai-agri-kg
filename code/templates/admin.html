@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>管理端 · 用户与作物土质授权</title>
+<style>
+:root{
+    --blue:#2F5597; --blue-dark:#24406f; --green:#3f7d5f;
+    --ink:#1f2937; --ink-2:#4b5563; --ink-3:#94a3b8; --line:#e6ebf2;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+    font-family:"Microsoft YaHei","PingFang SC",system-ui,-apple-system,sans-serif;
+    background:#f4f6f9; color:var(--ink); min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+}
+header{
+    background:linear-gradient(100deg,#2F5597,#3f7d5f); color:#fff;
+    padding:12px 22px; display:flex; align-items:baseline; gap:15px; flex-wrap:wrap;
+}
+header h1{font-size:18px;font-weight:600}
+header span{font-size:12.5px;opacity:.88}
+header button{
+    margin-left:auto; font-family:inherit; font-size:12.5px; color:#fff;
+    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.5);
+    padding:4px 12px; border-radius:7px; cursor:pointer; transition:.15s;
+}
+header button:hover{background:rgba(255,255,255,.26)}
+.wrap{max-width:1000px;margin:0 auto;padding:16px 16px 40px}
+
+/* ---------------- 概览条 ---------------- */
+.sum{
+    display:flex; flex-wrap:wrap; align-items:center; gap:12px;
+    background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:13px 18px; margin-bottom:13px; font-size:13px; color:var(--ink-2);
+}
+.sum .it{display:flex; align-items:baseline; gap:5px}
+.sum b{font-size:17px; font-weight:600; color:var(--blue)}
+.sum .sep{color:#dbe3ec}
+.sum .who{margin-left:auto; font-size:12.5px; color:var(--ink-3)}
+
+/* ---------------- 卡片 ---------------- */
+.card{
+    background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:15px 18px; margin-bottom:13px;
+}
+.card-head{display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; margin-bottom:13px}
+.card-head b{font-size:14px; color:var(--ink)}
+.card-head span{font-size:12px; color:var(--ink-3)}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.f{display:block; margin-bottom:12px}
+.f > label, .f > span.lb{display:block; font-size:12.5px; color:#64748b; margin-bottom:6px}
+/* 只用子选择器：多选组件里的 checkbox 也是 input，
+   被 .f input 的 width:100% 带上就会撑成 87px，把作物名挤成一个字 */
+.f > input{
+    width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px;
+    font-size:13.5px; font-family:inherit; outline:none; background:#fff;
+}
+.f > input:focus{border-color:var(--blue); box-shadow:0 0 0 3px rgba(47,85,151,.12)}
+.acts{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:4px}
+button{
+    font-family:inherit; font-size:13px; padding:8px 17px; border-radius:8px;
+    border:1px solid #cbd5e1; background:#fff; color:#334155; cursor:pointer; transition:.15s;
+}
+button:hover{border-color:var(--blue); color:var(--blue)}
+button:disabled{opacity:.55; cursor:not-allowed}
+button.pri{border-color:var(--blue); background:var(--blue); color:#fff}
+button.pri:hover{background:var(--blue-dark); border-color:var(--blue-dark); color:#fff}
+.hint{font-size:12px; color:var(--ink-3); line-height:1.6}
+.hint.err{color:#b3261e}
+.hint.ok{color:#256b45}
+
+/* ---------------- 作物多选 ---------------- */
+.picker{border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; background:#fbfdff}
+.pk-search{
+    width:100%; padding:8px 11px; border:0; border-bottom:1px solid #e8eef6;
+    font-size:12.5px; font-family:inherit; outline:none; background:#fff;
+}
+.pk-box{
+    max-height:186px; overflow-y:auto; padding:9px 10px;
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(118px,1fr)); gap:3px 8px;
+}
+.pk-item{display:flex; align-items:center; gap:6px; font-size:12.5px; color:#334155; cursor:pointer; padding:3px 4px; border-radius:6px}
+.pk-item:hover{background:#eef3fb}
+/* 勾选框保持原生尺寸，别被\"输入框\"那套样式带跑 */
+.pk-item input{width:auto; height:auto; padding:0; margin:0; border:0; background:none; accent-color:#2F5597; cursor:pointer}
+.pk-item span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.pk-foot{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    border-top:1px solid #e8eef6; padding:8px 11px; font-size:12px; color:var(--ink-3); background:#fff;
+}
+.pk-foot b{color:var(--blue); font-size:13px}
+.pk-foot a{color:var(--blue); text-decoration:none}
+.pk-foot a:hover{text-decoration:underline}
+.pk-foot .pk-tip{margin-left:auto}
+.pk-empty{padding:14px; font-size:12.5px; color:var(--ink-3)}
+
+/* ---------------- 用户端列表 ---------------- */
+.sec-head{
+    display:flex; align-items:baseline; gap:9px;
+    margin:18px 0 10px; font-size:14px; font-weight:600; color:var(--ink);
+}
+.sec-head span{font-size:12.5px; font-weight:400; color:var(--ink-3)}
+.list{display:flex; flex-direction:column; gap:11px}
+.uc{background:#fff; border:1px solid var(--line); border-left:3px solid var(--blue); border-radius:12px; padding:14px 17px}
+.uc.limited{border-left-color:#d97706}
+.uc-top{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.uc-av{
+    width:28px; height:28px; flex:none; border-radius:50%; background:#eef3fb; color:var(--blue);
+    font-size:13px; font-weight:600; display:flex; align-items:center; justify-content:center;
+}
+.uc-top b{font-size:14.5px; font-weight:600}
+.tag{font-size:11px; border-radius:5px; padding:2px 8px; background:#eef3fb; color:var(--blue)}
+.tag.free{background:#e8f5ee; color:#256b45}
+.tag.lim{background:#fdf1e3; color:#9a5b12}
+.uc-meta{margin-left:auto; font-size:12px; color:var(--ink-3)}
+.uc-crops{font-size:12.5px; color:var(--ink-2); line-height:1.8; margin-top:9px}
+.uc-crops em{font-style:normal; color:var(--ink-3)}
+.uc-acts{display:flex; gap:8px; flex-wrap:wrap; margin-top:11px}
+.uc-acts button{font-size:12.5px; padding:6px 13px}
+.uc-acts button.danger{color:#b3261e; border-color:#f0c4c0}
+.uc-acts button.danger:hover{background:#fdeaea; border-color:#b3261e; color:#b3261e}
+.uc-edit{margin-top:12px; padding-top:12px; border-top:1px dashed #e2e8f0}
+.inline-row{
+    display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:12px;
+    padding-top:12px; border-top:1px dashed #e2e8f0; font-size:12.5px; color:var(--ink-2);
+}
+.inline-row input{
+    padding:7px 11px; border:1px solid #cbd5e1; border-radius:8px;
+    font-size:13px; font-family:inherit; outline:none; min-width:150px;
+}
+.inline-row input:focus{border-color:var(--blue); box-shadow:0 0 0 3px rgba(47,85,151,.12)}
+.inline-row .warn{color:#b3261e}
+.empty{
+    background:#fff; border:1px dashed #cfdbea; border-radius:12px;
+    padding:20px 22px; font-size:13px; color:var(--ink-2); line-height:1.8;
+}
+
+/* ---------------- 展开看该用户端的地块（管理端只读） ----------------
+   地块卡片直接用 _plot_reminder.html 里的 .plots / .plot 同款样式，
+   点卡片弹出的是与物候期提醒页完全相同的「今日提醒」详情 */
+.uc-plots{margin-top:12px; padding-top:12px; border-top:1px dashed #e2e8f0}
+.pl-cap{font-size:12.5px; color:var(--ink-3); margin-bottom:10px}
+.pl-cap b{color:var(--ink-2)}
+.pl-empty{
+    font-size:12.5px; color:var(--ink-3); background:#f8fafc;
+    border:1px dashed #e2e8f0; border-radius:9px; padding:12px 14px; line-height:1.8;
+}
+.pl-spin{
+    display:inline-block; width:12px; height:12px; vertical-align:-1px; margin-right:6px;
+    border:2px solid #cbd5e1; border-top-color:#2F5597; border-radius:50%;
+    animation:plspin .8s linear infinite;
+}
+@keyframes plspin{to{transform:rotate(360deg)}}
+
+/* ---------------- 纳入已注册账号 ---------------- */
+.claim{margin-top:15px; padding-top:13px; border-top:1px dashed #e2e8f0}
+.claim .lb{display:block; font-size:12.5px; color:#64748b; margin-bottom:7px}
+.claim-row{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.claim-row select{
+    padding:8px 11px; border:1px solid #cbd5e1; border-radius:8px;
+    font-size:13px; font-family:inherit; color:#334155; background:#fff;
+    outline:none; min-width:170px;
+}
+.claim-row select:focus{border-color:var(--blue); box-shadow:0 0 0 3px rgba(47,85,151,.12)}
+
+@media (max-width:720px){
+    .grid2{grid-template-columns:1fr}
+    .uc-meta{margin-left:0; width:100%}
+    .pk-foot .pk-tip{margin-left:0; width:100%}
+}
+</style>
+</head>
+<body>
+    {% include '_nav.html' %}
+<header>
+    <h1>管理端</h1>
+    <span>添加用户端账号 · 指定能种的作物与可用的土质</span>
+    <button id="toggleAdd">+ 添加用户端</button>
+</header>
+
+<div class="wrap">
+    <div class="sum" id="sum"><span class="hint">加载中…</span></div>
+
+    <!-- 添加用户端 -->
+    <div class="card" id="addCard" style="display:none">
+        <div class="card-head">
+            <b>添加用户端</b>
+            <span>账号由你创建，创建后直接归到你的名下管理</span>
+        </div>
+        <div class="grid2">
+            <label class="f"><span class="lb">用户端账号</span>
+                <input id="newUser" placeholder="如 zhang001（至少 3 位）" autocomplete="off">
+            </label>
+            <label class="f"><span class="lb">初始密码</span>
+                <input id="newPwd" type="text" placeholder="至少 6 位，注册后可在下方重置" autocomplete="off">
+            </label>
+        </div>
+        <div class="f">
+            <span class="lb">这个账号能种植什么（可多选，也可搜索）</span>
+            <div id="createPicker"></div>
+        </div>
+        <div class="f">
+            <span class="lb">这个账号能用哪些土质（可多选，也可搜索）</span>
+            <div id="createSoilPicker"></div>
+        </div>
+        <div class="acts">
+            <button class="pri" id="createBtn">创建并归入我的管理</button>
+            <span class="hint" id="createHint"></span>
+        </div>
+
+        <!-- 别处注册/管理的账号，管理端可以事后收进来 -->
+        <div class="claim">
+            <span class="lb">或者：把别处的用户端纳入管理（自己注册的、或原归其他管理端的）</span>
+            <div class="claim-row">
+                <select id="claimSel"></select>
+                <button id="claimBtn">纳入我的管理</button>
+                <span class="hint" id="claimHint"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="sec-head">我管理的用户端 <span id="uCount"></span></div>
+    <div class="list" id="list"><div class="empty">加载中…</div></div>
+</div>
+
+<script>
+function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+
+let ALL_CROPS = [];     // 可供授权的作物（有生育期数据的那批）
+let ALL_SOILS = [];     // 可供授权的土质（图谱里的「土壤」节点）
+let CROP_ERROR = '';    // 读不到时的原因，展示给管理员看
+let SOIL_ERROR = '';
+let USERS = [];         // 我管理的用户端
+let ASSIGNABLE = [];    // 可以纳入我管理的账号（未归属 / 原归其他管理端）
+let STATS = {};
+
+/* 两类授权共用一个多选组件：kind 只影响列表来源与提示语 */
+const PERM_KIND = {
+    crop: { list: () => ALL_CROPS, tip: '一种都不选 = 不限制，该账号可种全部作物',
+            unit: '作物' },
+    soil: { list: () => ALL_SOILS, tip: '一种都不选 = 不限制，该账号可选全部土质',
+            unit: '土质' }
+};
+
+/* ---------------------------------------- 作物 / 土质 多选组件 */
+function pickerHTML(id, selected, kind){
+    kind = kind || 'crop';
+    const conf = PERM_KIND[kind];
+    const source = conf.list();
+    const sel = new Set(selected || []);
+    if (!source.length){
+        const reason = (kind === 'soil' ? SOIL_ERROR : CROP_ERROR) || ('未读到' + conf.unit);
+        return `<div class="picker"><div class="pk-empty">${conf.unit}列表不可用：${esc(reason)}</div></div>`;
+    }
+    const items = source.map(c => {
+        const on = sel.has(c) ? ' checked' : '';
+        return `<label class="pk-item"><input type="checkbox" value="${esc(c)}"${on}><span title="${esc(c)}">${esc(c)}</span></label>`;
+    }).join('');
+    return `<div class="picker" id="${id}" data-kind="${kind}">
+        <input class="pk-search" type="text" placeholder="搜索${conf.unit}名…（共 ${source.length} 种）">
+        <div class="pk-box">${items}</div>
+        <div class="pk-foot">
+            <span>已选 <b class="pk-n">${sel.size}</b> 种</span>
+            <a href="javascript:;" class="pk-all">全选</a>
+            <a href="javascript:;" class="pk-none">清空</a>
+            <span class="pk-tip">${conf.tip}</span>
+        </div>
+    </div>`;
+}
+
+function pickerValue(id){
+    const box = document.getElementById(id);
+    if (!box) return [];
+    return Array.prototype.slice.call(box.querySelectorAll('.pk-item input:checked'))
+        .map(i => i.value);
+}
+
+function pickerCount(box){
+    const n = box.querySelectorAll('.pk-item input:checked').length;
+    const el = box.querySelector('.pk-n');
+    if (el) el.textContent = n;
+}
+
+/* 搜索 / 勾选 / 全选 全部走事件委托，两个多选组件共用一套逻辑 */
+document.addEventListener('input', function(e){
+    if (!e.target.classList || !e.target.classList.contains('pk-search')) return;
+    const box = e.target.parentElement.querySelector('.pk-box');
+    const q = e.target.value.trim();
+    Array.prototype.forEach.call(box.querySelectorAll('.pk-item'), function(l){
+        l.style.display = (!q || l.textContent.indexOf(q) >= 0) ? '' : 'none';
+    });
+});
+document.addEventListener('change', function(e){
+    const pk = e.target.closest && e.target.closest('.picker');
+    if (pk) pickerCount(pk);
+});
+document.addEventListener('click', function(e){
+    const a = e.target.closest && e.target.closest('.pk-all, .pk-none');
+    if (!a) return;
+    e.preventDefault();
+    const pk = a.closest('.picker');
+    const on = a.classList.contains('pk-all');
+    /* 全选只作用于「当前筛选出来、看得见」的那些，搜完再全选更顺手 */
+    Array.prototype.forEach.call(pk.querySelectorAll('.pk-item'), function(l){
+        if (l.style.display !== 'none') l.querySelector('input').checked = on;
+    });
+    pickerCount(pk);
+});
+
+/* ---------------------------------------- 渲染 */
+function renderSum(){
+    const s = STATS || {};
+    // 只报"和我有关"的三个数：系统账号总数 / 管理端数量属于运维信息，界面上不出现
+    document.getElementById('sum').innerHTML =
+        `<span class="it">我管理的用户端 <b>${s.managed || 0}</b> 个</span>` +
+        `<span class="sep">·</span>` +
+        `<span class="it">作物有限制 <b>${s.limited || 0}</b> 个</span>` +
+        `<span class="sep">·</span>` +
+        `<span class="it">土质有限制 <b>${s.soil_limited || 0}</b> 个</span>` +
+        `<span class="who">当前登录：{{ username }}</span>`;
+}
+
+function permLine(list, emptyText){
+    if (list && list.length){
+        return list.map(esc).join('、') + `<em>（${list.length} 种）</em>`;
+    }
+    return `<em>${emptyText}</em>`;
+}
+
+function renderList(){
+    const box = document.getElementById('list');
+    document.getElementById('uCount').textContent = USERS.length ? `共 ${USERS.length} 个` : '';
+    if (!USERS.length){
+        box.innerHTML = `<div class="empty">
+            <b>还没有归属你管理的用户端。</b><br>
+            点右上角「+ 添加用户端」，输入账号和密码就能创建 ——
+            创建时勾选的作物与土质，就是这个账号建档时能选的范围。
+        </div>`;
+        return;
+    }
+    box.innerHTML = USERS.map(u => {
+        const crops = u.crops || [], soils = u.soils || [];
+        const tags = [];
+        if (crops.length) tags.push(`<span class="tag lim">可种 ${crops.length} 种</span>`);
+        if (soils.length) tags.push(`<span class="tag lim">土质 ${soils.length} 种</span>`);
+        if (!tags.length) tags.push('<span class="tag free">不作限制</span>');
+        return `<div class="uc ${(crops.length || soils.length) ? 'limited' : ''}" data-user="${esc(u.username)}">
+            <div class="uc-top">
+                <span class="uc-av">${esc(u.username[0])}</span>
+                <b>${esc(u.username)}</b>
+                ${tags.join('')}
+                <span class="uc-meta">创建 ${esc(u.created || '—')} · 地块 ${u.plot_count} 块 · 提问 ${u.ask_count} 次</span>
+            </div>
+            <div class="uc-crops">可种植：${permLine(crops, '未做限制，可种图谱里全部作物')}</div>
+            <div class="uc-crops" style="margin-top:2px">可用土质：${permLine(soils, '未做限制，可选图谱里全部土质')}</div>
+            <div class="uc-acts">
+                <button data-act="plots">查看地块${u.plot_count ? '（' + u.plot_count + '）' : ''}</button>
+                <button data-act="crops">编辑可种作物与土质</button>
+                <button data-act="pwd">重置密码</button>
+                <button data-act="detach">解除管理</button>
+                <button data-act="del" class="danger">删除账号</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderClaim(){
+    const sel = document.getElementById('claimSel');
+    const btn = document.getElementById('claimBtn');
+    const hint = document.getElementById('claimHint');
+    if (!ASSIGNABLE.length){
+        sel.innerHTML = '<option value="">（没有可纳入的账号）</option>';
+        sel.disabled = true; btn.disabled = true;
+        hint.textContent = '系统里暂时没有别的用户端账号：自己注册的、或归其他管理端的都会出现在这里';
+        return;
+    }
+    sel.disabled = false; btn.disabled = false;
+    sel.innerHTML = ASSIGNABLE.map(u => {
+        const suffix = u.status === 'free' ? '（未归属）' : `（现归 ${u.holder}）`;
+        return `<option value="${esc(u.username)}">${esc(u.username + suffix)}</option>`;
+    }).join('');
+    const hasOther = ASSIGNABLE.some(u => u.status === 'other');
+    hint.textContent = hasOther
+        ? '带「现归 X」的账号纳入后会从 X 名下转过来，原有授权保持不变'
+        : '';
+}
+
+/* 列表读不到时的提示：把原因带上，并给一个「重新加载」——
+   数据来自图谱（Neo4j），最常见的原因是图谱服务没起来 */
+function renderListError(boxId, kind, msg){
+    const conf = PERM_KIND[kind];
+    document.getElementById(boxId).innerHTML =
+        `<div class="picker"><div class="pk-empty">
+            ${conf.unit}列表加载失败：${esc(msg)}<br>
+            <span style="color:#94a3b8">${conf.unit}清单读自知识图谱（Neo4j），
+            确认图谱服务在运行、图谱数据完好后，点</span>
+            <a href="javascript:;" id="reload_${kind}" style="color:#2F5597">重新加载</a>
+         </div></div>`;
+    const a = document.getElementById('reload_' + kind);
+    if (a) a.addEventListener('click', kind === 'soil' ? loadSoils : loadCrops);
+}
+
+function loadCrops(){ return loadPermList('crop'); }
+function loadSoils(){ return loadPermList('soil'); }
+
+function loadPermList(kind){
+    const isSoil = kind === 'soil';
+    const boxId = isSoil ? 'createSoilPicker' : 'createPicker';
+    const pkId = isSoil ? 'pkSoil' : 'pkCreate';
+    const api = isSoil ? '/api/admin/soils' : '/api/admin/crops';
+    const key = isSoil ? 'soils' : 'crops';
+    return fetch(api).then(r => r.json()).then(d => {
+        const list = (d && d[key]) || [];
+        if (isSoil) ALL_SOILS = list; else ALL_CROPS = list;
+        const err = (d && d.error) || ('未返回任何' + PERM_KIND[kind].unit);
+        if (isSoil) SOIL_ERROR = list.length ? '' : err;
+        else CROP_ERROR = list.length ? '' : err;
+        if (!list.length) renderListError(boxId, kind, err);
+        else document.getElementById(boxId).innerHTML = pickerHTML(pkId, [], kind);
+    }).catch(e => {
+        const msg = '请求失败：' + e.message;
+        if (isSoil){ ALL_SOILS = []; SOIL_ERROR = msg; } else { ALL_CROPS = []; CROP_ERROR = msg; }
+        renderListError(boxId, kind, msg);
+    });
+}
+
+/* ---------------------------------------- 顶部「添加用户端」 */
+document.getElementById('toggleAdd').addEventListener('click', function(){
+    const c = document.getElementById('addCard');
+    const show = c.style.display === 'none';
+    c.style.display = show ? '' : 'none';
+    this.textContent = show ? '收起' : '+ 添加用户端';
+    if (show) document.getElementById('newUser').focus();
+});
+
+document.getElementById('createBtn').addEventListener('click', function(){
+    const btn = this;
+    const name = document.getElementById('newUser').value.trim();
+    const pwd = document.getElementById('newPwd').value.trim();
+    const crops = pickerValue('pkCreate');
+    const soils = pickerValue('pkSoil');
+    const hint = document.getElementById('createHint');
+    if (!name || !pwd){ hint.className = 'hint err'; hint.textContent = '账号和密码都要填'; return; }
+    btn.disabled = true; btn.textContent = '创建中…';
+    hint.className = 'hint'; hint.textContent = '';
+    fetch('/api/admin/user/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: name, password: pwd,
+                               crops: crops, soils: soils })
+    }).then(r => r.json()).then(d => {
+        hint.className = 'hint ' + (d.ok ? 'ok' : 'err');
+        hint.textContent = d.message || (d.ok ? '已创建' : '创建失败');
+        if (d.ok){
+            document.getElementById('newUser').value = '';
+            document.getElementById('newPwd').value = '';
+            loadOverview();
+        }
+    }).catch(e => { hint.className = 'hint err'; hint.textContent = '请求失败：' + e.message; })
+      .finally(() => { btn.disabled = false; btn.textContent = '创建并归入我的管理'; });
+});
+
+/* ---------------------------------------- 纳入已注册的账号 */
+document.getElementById('claimBtn').addEventListener('click', function(){
+    const btn = this;
+    const name = document.getElementById('claimSel').value;
+    const hint = document.getElementById('claimHint');
+    if (!name) return;
+    btn.disabled = true; btn.textContent = '纳入中…';
+    fetch('/api/admin/user/attach', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: name })
+    }).then(r => r.json()).then(d => {
+        hint.className = 'hint ' + (d.ok ? 'ok' : 'err');
+        hint.textContent = d.message || '';
+        if (d.ok) setTimeout(loadOverview, 700);
+    }).catch(e => { hint.className = 'hint err'; hint.textContent = '请求失败：' + e.message; })
+      .finally(() => { btn.disabled = false; btn.textContent = '纳入我的管理'; });
+});
+
+/* ---------------------------------------- 列表里的四个操作 */
+document.getElementById('list').addEventListener('click', function(e){
+    const btn = e.target.closest && e.target.closest('button[data-act]');
+    if (!btn) return;
+    const card = btn.closest('.uc');
+    const user = card.getAttribute('data-user');
+    const act = btn.getAttribute('data-act');
+
+    // 展开 / 收起该用户端的地块档案（只读；数据每次展开时现场拉，保证是最新的）
+    if (act === 'plots'){
+        if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+        const old = card.querySelector('.uc-plots');
+        if (old){                       // 再点一次就收起，不重复请求
+            old.remove();
+            btn.textContent = btn.dataset.label;
+            return;
+        }
+        btn.textContent = '收起地块';
+        const panel = document.createElement('div');
+        panel.className = 'uc-plots';
+        panel.innerHTML = `<div class="pl-cap"><span class="pl-spin"></span>正在读取 <b>${esc(user)}</b> 的地块…</div>`;
+        card.appendChild(panel);
+        loadUserPlots(user, panel);
+        return;
+    }
+
+    if (act === 'crops'){
+        const old = card.querySelector('.uc-edit');
+        if (old){ old.remove(); return; }
+        const u = USERS.filter(x => x.username === user)[0] || { crops: [], soils: [] };
+        const d = document.createElement('div');
+        d.className = 'uc-edit';
+        d.innerHTML =
+            `<div class="f"><span class="lb">能种植什么（可多选，也可搜索）</span>
+                ${pickerHTML('pkCrop_' + user, u.crops, 'crop')}</div>
+             <div class="f"><span class="lb">能用哪些土质（可多选，也可搜索）</span>
+                ${pickerHTML('pkSoil_' + user, u.soils, 'soil')}</div>` +
+            `<div class="acts" style="margin-top:4px">
+                <button class="pri" data-act="crops-save">保存</button>
+                <button data-act="crops-cancel">取消</button>
+                <span class="hint" id="h_${esc(user)}"></span>
+             </div>`;
+        card.appendChild(d);
+        return;
+    }
+    if (act === 'crops-cancel'){ card.querySelector('.uc-edit').remove(); return; }
+
+    if (act === 'crops-save'){
+        const crops = pickerValue('pkCrop_' + user);
+        const soils = pickerValue('pkSoil_' + user);
+        const hint = card.querySelector('#h_' + user);
+        btn.disabled = true;
+        fetch('/api/admin/user/perms', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, crops: crops, soils: soils })
+        }).then(r => r.json()).then(d => {
+            hint.className = 'hint ' + (d.ok ? 'ok' : 'err');
+            hint.textContent = d.message || '';
+            if (d.ok) setTimeout(loadOverview, 900);      // 让提示先看得见再刷新
+        }).catch(e => { hint.className = 'hint err'; hint.textContent = '请求失败：' + e.message; })
+          .finally(() => { btn.disabled = false; });
+        return;
+    }
+
+    if (act === 'pwd'){
+        rowToggle(card, 'pwd', `
+            <input type="text" id="np_${esc(user)}" placeholder="新密码（至少 6 位）">
+            <button class="pri" data-act="pwd-save">确定重置</button>
+            <button data-act="row-cancel">取消</button>
+            <span class="hint" id="hp_${esc(user)}">重置后请把新密码告诉该用户</span>`);
+        return;
+    }
+    if (act === 'pwd-save'){
+        const v = card.querySelector('#np_' + user).value.trim();
+        const hint = card.querySelector('#hp_' + user);
+        if (v.length < 6){ hint.className = 'hint err'; hint.textContent = '新密码至少 6 位'; return; }
+        btn.disabled = true;
+        fetch('/api/admin/user/password', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: v })
+        }).then(r => r.json()).then(d => {
+            hint.className = 'hint ' + (d.ok ? 'ok' : 'err');
+            hint.textContent = d.message || '';
+            if (d.ok) card.querySelector('.inline-row').querySelector('input').value = '';
+        }).catch(e => { hint.className = 'hint err'; hint.textContent = '请求失败：' + e.message; })
+          .finally(() => { btn.disabled = false; });
+        return;
+    }
+
+    if (act === 'detach'){
+        rowToggle(card, 'detach', `
+            <span>解除后账号保留，但不再归你管理，作物限制也会取消。</span>
+            <button class="pri" data-act="detach-save">确认解除</button>
+            <button data-act="row-cancel">取消</button>
+            <span class="hint" id="hd_${esc(user)}"></span>`);
+        return;
+    }
+    if (act === 'detach-save'){
+        btn.disabled = true;
+        const hint = card.querySelector('#hd_' + user);
+        fetch('/api/admin/user/detach', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user })
+        }).then(r => r.json()).then(d => {
+            hint.className = 'hint ' + (d.ok ? 'ok' : 'err');
+            hint.textContent = d.message || '';
+            if (d.ok) setTimeout(loadOverview, 500);
+        }).catch(e => { hint.className = 'hint err'; hint.textContent = '请求失败：' + e.message; });
+        return;
+    }
+
+    if (act === 'del'){
+        rowToggle(card, 'del', `
+            <span class="warn">删除后该账号的地块与历史记录会一并清除，且不可恢复。</span>
+            <button class="danger" data-act="del-save">确认删除</button>
+            <button data-act="row-cancel">取消</button>
+            <span class="hint" id="hx_${esc(user)}"></span>`);
+        return;
+    }
+    if (act === 'del-save'){
+        btn.disabled = true;
+        const hint = card.querySelector('#hx_' + user);
+        fetch('/api/admin/user/delete', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user })
+        }).then(r => r.json()).then(d => {
+            hint.className = 'hint ' + (d.ok ? 'ok' : 'err');
+            hint.textContent = d.message || '';
+            if (d.ok) setTimeout(loadOverview, 500);
+        }).catch(e => { hint.className = 'hint err'; hint.textContent = '请求失败：' + e.message; });
+        return;
+    }
+
+    if (act === 'row-cancel'){
+        const r = card.querySelector('.inline-row');
+        if (r) r.remove();
+    }
+});
+
+/* 一行式确认/输入：不用 alert / confirm，避免打断操作，也便于自动化验证 */
+function rowToggle(card, kind, inner){
+    const old = card.querySelector('.inline-row');
+    if (old) old.remove();
+    const d = document.createElement('div');
+    d.className = 'inline-row';
+    d.setAttribute('data-kind', kind);
+    d.innerHTML = inner;
+    card.appendChild(d);
+}
+
+/* ---------------------------------------- 查看该用户端的地块（只读）
+   接口是 /api/admin/user/plots?user=xxx，后端会再校验一次"必须在我名下"，
+   所以前端这里传谁都不会越权。
+   卡片用的是 _plot_reminder.html 里的 .plots / .plot 同款样式，
+   点卡片弹出与物候期提醒页完全相同的「今日提醒」详情（showDetail 也来自那个片段）。 */
+function plotCard(p){
+    const s = p.summary || {};
+    const pct = Math.max(0, Math.min(100, s.percent || 0));
+    const stageTag = s.stage ? `<span class="tag blue">${esc(s.stage)}</span>` : '';
+    const elapsedTag = (s.status === 'growing' && s.elapsed_days)
+        ? `<span class="tag gray">已种植 ${esc(s.elapsed_text || (s.elapsed_days + ' 天'))}</span>` : '';
+    const harvestTag = (s.status === 'growing' && s.harvest_md)
+        ? `<span class="tag gray">预计 ${esc(s.harvest_md)} 收获</span>` : '';
+    const riskTag = s.risk_count
+        ? `<span class="tag red">注意 ${esc((s.top_risks || []).join('、'))}${s.risk_count > 3 ? ' 等 ' + s.risk_count + ' 项' : ''}</span>`
+        : (s.status === 'growing' ? '<span class="tag green">暂无高发风险</span>' : '');
+    const nextTag = (s.days_to_next !== null && s.days_to_next !== undefined && s.next_stage)
+        ? `<span class="tag amber">${s.days_to_next} 天后进入${esc(s.next_stage)}</span>` : '';
+    const soilTag = p.soil
+        ? `<span class="tag ${s.soil_match === 'good' ? 'green' : (s.soil_match === 'warn' ? 'amber' : 'gray')}"
+             title="${esc(s.soil_match === 'good' ? '该土壤适合本作物' : '该土壤不是本作物的典型适宜土壤')}">土质：${esc(p.soil)}</span>`
+        : '<span class="tag gray">未填土质</span>';
+    const args = `'${esc(p.crop)}','${esc(p.sow_date)}','${esc(p.plot_name)}','${esc(p.soil || '')}',`
+        + `${(p.ph === null || p.ph === undefined || p.ph === '') ? "''" : p.ph}`;
+    return `<div class="plot" onclick="showDetail(${args})">
+        <div class="plot-top">
+            <div>
+                <div class="plot-crop">${esc(p.crop)}</div>
+                <div class="plot-name">${esc(p.plot_name)} · 播种 ${esc(p.sow_date)}</div>
+            </div>
+            ${p.area_mu ? `<span class="plot-area">${p.area_mu} 亩</span>` : ''}
+        </div>
+        <div class="plot-msg">${esc(s.text || '')}</div>
+        ${s.status === 'growing' ? `<div class="bar" style="margin:0"><em style="width:${pct}%"></em></div>
+            <div class="plot-msg" style="font-size:11.5px;color:#94a3b8;margin-top:-4px">全生育期进度 ${pct}%</div>` : ''}
+        <div class="plot-tags">${elapsedTag}${stageTag}${riskTag}${nextTag}</div>
+        <div class="plot-tags">${soilTag}${(p.ph !== null && p.ph !== undefined && p.ph !== '')
+            ? `<span class="tag blue">pH ${esc(p.ph)}</span>` : ''}${harvestTag}</div>
+        <div class="plot-acts">
+            <button class="sm" onclick="event.stopPropagation();showDetail(${args})">今日提醒</button>
+        </div>
+    </div>`;
+}
+
+function loadUserPlots(user, panel){
+    fetch('/api/admin/user/plots?user=' + encodeURIComponent(user))
+        .then(r => r.json())
+        .then(d => {
+            if (!d.ok){
+                fail(d.message || '接口没有返回数据');
+                return;
+            }
+            const plots = d.plots || [];
+            const cap = `<div class="pl-cap"><b>${esc(user)}</b> 的地块档案（${plots.length} 块）</div>`;
+            panel.innerHTML = cap + (plots.length
+                ? `<div class="plots">${plots.map(plotCard).join('')}</div>`
+                : `<div class="pl-empty">
+                       这个账号还没有建档地块。用户在「物候期提醒」里填一次播种日期与土质，
+                       地块就会出现在这里。
+                   </div>`);
+        })
+        .catch(e => fail('请求失败：' + e.message));
+
+    function fail(msg){
+        panel.innerHTML = `<div class="pl-empty">${esc(msg)}
+            <br><a href="javascript:;" class="pl-retry" style="color:#2F5597">重新读取</a></div>`;
+        const a = panel.querySelector('.pl-retry');
+        if (a) a.addEventListener('click', () => loadUserPlots(user, panel));
+    }
+}
+
+/* ---------------------------------------- 加载 */
+function loadOverview(){
+    fetch('/api/admin/overview').then(r => r.json()).then(d => {
+        if (!d.available){
+            document.getElementById('sum').innerHTML =
+                `<span class="hint err">数据库不可用：${esc(d.error || '')} —— 管理功能需要 MySQL 连接</span>`;
+            document.getElementById('list').innerHTML =
+                '<div class="empty">连接上数据库后刷新本页即可管理用户端。</div>';
+            return;
+        }
+        STATS = d.stats || {};
+        USERS = d.users || [];
+        ASSIGNABLE = d.assignable || [];
+        renderSum();
+        renderList();
+        renderClaim();
+    }).catch(() => {
+        document.getElementById('sum').innerHTML = '<span class="hint err">加载失败，请刷新重试</span>';
+    });
+}
+
+/* 启动：三类数据各拉各的，互不阻塞 ——
+   作物/土质读不到时，用户列表、改密码、解除管理照常可用 */
+loadCrops();
+loadSoils();
+loadOverview();
+</script>
+
+{# 地块卡片样式 + 「今日提醒」详情弹层：与物候期提醒页共用同一份片段，
+   所以管理端点开的地块与农户自己看到的一模一样 #}
+{% include '_plot_reminder.html' %}
+</body>
+</html>

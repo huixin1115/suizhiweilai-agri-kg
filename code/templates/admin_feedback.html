@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>反馈管理 · 管理端</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Microsoft YaHei","PingFang SC",system-ui,sans-serif; color: #1f2937; background: #f4f6f9; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+        .admin-wrap { padding: 26px 30px 40px; }
+        .admin-head h1 { font-size: 20px; font-weight: 600; }
+        .admin-head p { font-size: 13px; color: #94a3b8; margin-top: 7px; }
+        .admin-head p b { color: #64748b; }
+        .admin-head .warn { color: #e23b3b; }
+        .msg { padding: 11px 15px; border-radius: 10px; font-size: 13.5px; margin: 14px 0; }
+        .msg.ok { background: #e9f5ee; color: #2f7a56; border: 1px solid #cfe9da; }
+        .msg.err { background: #fdeaea; color: #c0392b; border: 1px solid #f5c6c6; }
+
+        /* ---------------- 筛选 tab：全部 / 待回复 / 已回复 ---------------- */
+        .fb-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 2px; }
+        .fb-tab {
+            padding: 7px 15px; border-radius: 20px;
+            font-size: 13px; text-decoration: none;
+            color: #4b5563; background: #fff; border: 1px solid #e6ebf2;
+            transition: background .15s, color .15s, border-color .15s;
+        }
+        .fb-tab:hover { border-color: #c9d8ee; color: #2F5597; }
+        .fb-tab.on { background: #2F5597; border-color: #2F5597; color: #fff; font-weight: 600; }
+        .fb-tab .n { margin-left: 5px; font-size: 12px; opacity: .8; }
+        /* 待回复的条数用红色 —— 跟侧栏那个未读数字一个意思 */
+        .fb-tab.pending .n { color: #e23b3b; font-weight: 600; opacity: 1; }
+        .fb-tab.on .n { color: #ffd9d9; }
+
+        .fb { background: #fff; border: 1px solid #e6ebf2; border-radius: 14px; box-shadow: 0 1px 4px rgba(47,85,151,.06); padding: 18px 20px; margin-bottom: 16px; }
+        /* 待回复=未读：左侧一道橙条，一屏扫下来先看见没处理的 */
+        .fb.pending { border-left: 3px solid #e8a33d; }
+        .fb .top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .fb .who { font-size: 14px; font-weight: 600; color: #2F5597; }
+        .fb .time { font-size: 12.5px; color: #94a3b8; }
+        .fb .badge { font-size: 12px; padding: 3px 10px; border-radius: 20px; }
+        .fb .badge.yes { color: #2f7a56; background: #e9f5ee; border: 1px solid #cfe9da; }
+        .fb .badge.no { color: #b45309; background: #fff7ed; border: 1px solid #fde3c2; }
+        .fb .content { font-size: 14px; line-height: 1.7; color: #334155; white-space: pre-wrap; }
+        .fb .old-reply { margin-top: 10px; padding: 11px 13px; background: #f0f6ff; border-radius: 9px; font-size: 13.5px; color: #2F5597; border: 1px solid #d6e2f5; }
+        .fb .old-reply b { color: #27487e; }
+        .reply-box { margin-top: 12px; display: flex; gap: 10px; align-items: flex-start; }
+        .reply-box textarea { flex: 1; min-height: 64px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 13.5px; font-family: inherit; background: #f8fafc; resize: vertical; outline: none; }
+        .reply-box textarea:focus { border-color: #2F5597; background: #fff; box-shadow: 0 0 0 3px rgba(47,85,151,.1); }
+        .btn { padding: 9px 18px; border: none; border-radius: 9px; background: #2F5597; color: #fff; font-size: 13.5px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
+        .btn:hover { background: #27487e; }
+        .empty { text-align: center; color: #a9b4c2; padding: 40px 20px; background: #fff; border: 1px dashed #dbe3ec; border-radius: 14px; font-size: 14px; }
+
+        @media (max-width: 640px) {
+            .admin-wrap { padding: 20px 16px 32px; }
+            .reply-box { flex-direction: column; }
+            .reply-box .btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    {% include '_nav.html' %}
+
+    {% set label = '待回复' if status == 'pending' else ('已回复' if status == 'replied' else '全部') %}
+
+    <div class="admin-wrap">
+        <div class="admin-head">
+            <h1>反馈管理</h1>
+            <p>查看用户端提交的意见反馈并逐条回复。当前登录：<b>{{ username }}</b>
+               　·　{{ label }} {{ items|length }} 条　·　共 {{ stats.total }} 条，其中待回复
+               <b class="warn">{{ stats.pending }}</b> 条</p>
+        </div>
+
+        {% if msg %}<div class="msg ok">{{ msg }}</div>{% endif %}
+        {% if err %}<div class="msg err">{{ err }}</div>{% endif %}
+        {% if not available %}<div class="msg err">暂时读不到反馈记录：{{ store_error or '数据库不可用' }}</div>{% endif %}
+
+        {# 三个 tab 的数字取自 stats（全表口径），不跟着当前筛选变 #}
+        <div class="fb-tabs">
+            <a class="fb-tab {{ 'on' if status == 'all' }}" href="{{ url_for('admin_feedback_page', status='all') }}">全部<span class="n">{{ stats.total }}</span></a>
+            <a class="fb-tab pending {{ 'on' if status == 'pending' }}" href="{{ url_for('admin_feedback_page', status='pending') }}">待回复<span class="n">{{ stats.pending }}</span></a>
+            <a class="fb-tab {{ 'on' if status == 'replied' }}" href="{{ url_for('admin_feedback_page', status='replied') }}">已回复<span class="n">{{ stats.replied }}</span></a>
+        </div>
+
+        {% for it in items %}
+        <div class="fb {{ 'pending' if not it.reply }}">
+            <div class="top">
+                <span class="who">{{ it.username }}</span>
+                <span class="time">{{ it.created_at.strftime('%Y-%m-%d %H:%M') if it.created_at else '' }}</span>
+                {% if it.reply %}<span class="badge yes">已回复</span>{% else %}<span class="badge no">待回复</span>{% endif %}
+            </div>
+            <div class="content">{{ it.content }}</div>
+            {% if it.reply %}
+            <div class="old-reply"><b>已回复：</b>{{ it.reply }}<span class="time" style="margin-left:8px">{{ it.replied_at.strftime('%Y-%m-%d %H:%M') if it.replied_at else '' }}</span></div>
+            {% endif %}
+            <form class="reply-box" method="post" action="{{ url_for('admin_feedback_reply') }}">
+                <input type="hidden" name="fid" value="{{ it.id }}">
+                {# 回完跳回原来这个 tab，别把人甩回「全部」 #}
+                <input type="hidden" name="status" value="{{ status }}">
+                <textarea name="reply" placeholder="{{ '修改回复内容' if it.reply else '输入回复内容…' }}" required>{{ it.reply or '' }}</textarea>
+                <button class="btn" type="submit">{{ '更新回复' if it.reply else '回复' }}</button>
+            </form>
+        </div>
+        {% else %}
+        <div class="empty">
+            {% if status == 'pending' %}没有待回复的反馈 —— 用户端提的意见都处理完了
+            {% elif status == 'replied' %}还没有回复过任何反馈
+            {% else %}暂无农户反馈{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

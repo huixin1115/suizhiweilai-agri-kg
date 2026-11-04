@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户与账号管理 · 穗知未来</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Microsoft YaHei","PingFang SC",system-ui,sans-serif; color: #1f2937; background: #f4f6f9; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+        .admin-wrap { padding: 26px 30px 40px; }
+        .admin-head h1 { font-size: 20px; font-weight: 600; }
+        .admin-head p { font-size: 13px; color: #94a3b8; margin-top: 7px; }
+        .msg { padding: 11px 15px; border-radius: 10px; font-size: 13.5px; margin: 14px 0; }
+        .msg.ok { background: #e9f5ee; color: #2f7a56; border: 1px solid #cfe9da; }
+        .msg.err { background: #fdeaea; color: #c0392b; border: 1px solid #f5c6c6; }
+
+        .card { background: #fff; border: 1px solid #e6ebf2; border-radius: 14px; box-shadow: 0 1px 4px rgba(47,85,151,.06); padding: 20px 22px; margin-bottom: 20px; }
+        .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 14px; color: #2F5597; }
+        .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+        .fld { display: flex; flex-direction: column; gap: 5px; }
+        .fld label { font-size: 12px; color: #64748b; }
+        .fld input, .fld select { padding: 9px 11px; border: 1px solid #e2e8f0; border-radius: 9px; font-size: 14px; font-family: inherit; background: #f8fafc; outline: none; }
+        .fld input:focus, .fld select:focus { border-color:#2F5597; background:#fff; box-shadow:0 0 0 3px rgba(47,85,151,.1); }
+        .btn { padding: 9px 18px; border: none; border-radius: 9px; background: #2F5597; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+        .btn:hover { background: #27487e; }
+        .btn.sm { padding: 6px 12px; font-size: 12.5px; }
+        .btn.green { background: #2f7a56; } .btn.green:hover { background:#276848; }
+        .btn.red { background: #c0392b; } .btn.red:hover { background:#a83125; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        thead th { text-align: left; font-weight: 600; color: #64748b; background: #f8fafc; padding: 12px 14px; border-bottom: 1px solid #eef2f7; font-size: 12.5px; }
+        tbody td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: middle; }
+        tbody tr:hover { background: #fafcff; }
+        .role-tag { display: inline-block; font-size: 12px; padding: 3px 11px; border-radius: 20px; font-weight: 500; }
+        .role-tag.admin { color: #2F5597; background: #eef3fb; border: 1px solid #d6e2f5; }
+        .role-tag.farmer { color: #3f7d5f; background: #e9f5ee; border: 1px solid #cfe9da; }
+        .mini-form { display: inline-flex; gap: 6px; align-items: center; }
+        .mini-form input { padding: 6px 9px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; width: 130px; }
+        .empty { text-align: center; color: #a9b4c2; padding: 30px; }
+        .self { color: #94a3b8; font-size: 12px; }
+    </style>
+</head>
+<body>
+    {% include '_nav.html' %}
+
+    <div class="admin-wrap">
+        <div class="admin-head">
+            <h1>用户与账号管理</h1>
+            <p>新增账号、删除账号、重置密码、调整角色。当前登录：<b>{{ username }}</b>（农场主管）</p>
+        </div>
+
+        {% if msg %}<div class="msg ok">{{ msg }}</div>{% endif %}
+        {% if err %}<div class="msg err">{{ err }}</div>{% endif %}
+
+        <div class="card">
+            <h3>新增账号</h3>
+            <form method="post" action="{{ url_for('admin_user_add') }}">
+                <div class="row">
+                    <div class="fld"><label>用户名</label><input name="username" placeholder="登录名" required></div>
+                    <div class="fld"><label>初始密码</label><input name="password" type="text" placeholder="至少6位" required></div>
+                    <div class="fld"><label>角色</label>
+                        <select name="role">
+                            <option value="farmer">农户</option>
+                            <option value="admin">管理员（农场主管）</option>
+                        </select>
+                    </div>
+                    <div class="fld"><button class="btn green" type="submit">创建账号</button></div>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>账号列表（共 {{ users|length }} 个）</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:50px">ID</th>
+                        <th>用户名</th>
+                        <th style="width:150px">角色</th>
+                        <th style="width:300px">重置密码</th>
+                        <th style="width:260px">调整角色</th>
+                        <th style="width:120px">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td>{{ u.id }}</td>
+                        <td>{{ u.username }}{% if u.username == username %} <span class="self">(我)</span>{% endif %}</td>
+                        <td><span class="role-tag {{ u.role }}">{{ '管理员（农场主管）' if u.role == 'admin' else '农户' }}</span></td>
+                        <td>
+                            <form class="mini-form" method="post" action="{{ url_for('admin_user_reset_pwd') }}">
+                                <input type="hidden" name="uid" value="{{ u.id }}">
+                                <input type="text" name="password" placeholder="新密码(≥6位)" required>
+                                <button class="btn sm" type="submit">重置</button>
+                            </form>
+                        </td>
+                        <td>
+                            <form class="mini-form" method="post" action="{{ url_for('admin_user_set_role') }}">
+                                <input type="hidden" name="uid" value="{{ u.id }}">
+                                <select name="role">
+                                    <option value="farmer" {% if u.role=='farmer' %}selected{% endif %}>农户</option>
+                                    <option value="admin" {% if u.role=='admin' %}selected{% endif %}>管理员</option>
+                                </select>
+                                <button class="btn sm" type="submit">保存</button>
+                            </form>
+                        </td>
+                        <td>
+                            {% if u.username == username %}
+                            <span class="self">不可删除</span>
+                            {% else %}
+                            <form method="post" action="{{ url_for('admin_user_delete') }}">
+                                <input type="hidden" name="uid" value="{{ u.id }}">
+                                <button class="btn sm red" type="submit" onclick="return confirm('确认删除该账号？')">删除</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="empty">暂无账号数据</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

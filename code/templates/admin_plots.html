@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地块分配 · 管理端</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Microsoft YaHei","PingFang SC",system-ui,sans-serif; color: #1f2937; background: #f4f6f9; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+        .admin-wrap { padding: 26px 30px 40px; }
+        .admin-head h1 { font-size: 20px; font-weight: 600; }
+        .admin-head p { font-size: 13px; color: #94a3b8; margin-top: 7px; }
+        .msg { padding: 11px 15px; border-radius: 10px; font-size: 13.5px; margin: 14px 0; }
+        .msg.ok { background: #e9f5ee; color: #2f7a56; border: 1px solid #cfe9da; }
+        .msg.err { background: #fdeaea; color: #c0392b; border: 1px solid #f5c6c6; }
+
+        .card { background: #fff; border: 1px solid #e6ebf2; border-radius: 14px; box-shadow: 0 1px 4px rgba(47,85,151,.06); padding: 20px 22px; margin-bottom: 20px; }
+        .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 14px; color: #2F5597; }
+        .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+        .fld { display: flex; flex-direction: column; gap: 5px; }
+        .fld label { font-size: 12px; color: #64748b; }
+        .fld input { padding: 9px 11px; border: 1px solid #e2e8f0; border-radius: 9px; font-size: 14px; font-family: inherit; background: #f8fafc; outline: none; min-width: 150px; }
+        .fld input, .fld select { padding: 9px 11px; border: 1px solid #e2e8f0; border-radius: 9px; font-size: 14px; font-family: inherit; background: #f8fafc; outline: none; min-width: 150px; }
+        .fld input:focus, .fld select:focus { border-color: #2F5597; background: #fff; box-shadow: 0 0 0 3px rgba(47,85,151,.1); }
+        .btn { padding: 9px 18px; border: none; border-radius: 9px; background: #2F5597; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+        .btn:hover { background: #27487e; }
+        .btn.sm { padding: 6px 12px; font-size: 12.5px; }
+        .btn.green { background: #2f7a56; } .btn.green:hover { background: #276848; }
+        .btn.red { background: #c0392b; } .btn.red:hover { background: #a83125; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        thead th { text-align: left; font-weight: 600; color: #64748b; background: #f8fafc; padding: 12px 14px; border-bottom: 1px solid #eef2f7; font-size: 12.5px; }
+        tbody td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+        tbody tr:hover { background: #fafcff; }
+        .badge { font-size: 12px; padding: 3px 10px; border-radius: 20px; }
+        .badge.yes { color: #2f7a56; background: #e9f5ee; border: 1px solid #cfe9da; }
+        .badge.no { color: #94a3b8; background: #f1f5f9; border: 1px solid #e2e8f0; }
+        .date-edit { padding: 5px 7px; border: 1px solid #e2e8f0; border-radius: 7px; font-size: 12.5px; font-family: inherit; background: #f8fafc; outline: none; }
+        .date-edit:focus { border-color: #2F5597; background: #fff; }
+        .assign-farmer { padding: 7px 9px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; background: #f8fafc; font-family: inherit; }
+        .empty { text-align: center; color: #a9b4c2; padding: 28px; }
+    </style>
+</head>
+<body>
+    {% include '_nav.html' %}
+
+    <div class="admin-wrap">
+        <div class="admin-head">
+            <h1>地块分配</h1>
+            <p>登记农场地块，并将其分配给农户（或收回）。当前登录：<b>{{ username }}</b></p>
+        </div>
+
+        {% if msg %}<div class="msg ok">{{ msg }}</div>{% endif %}
+        {% if err %}<div class="msg err">{{ err }}</div>{% endif %}
+
+        <div class="card">
+            <h3>新增地块</h3>
+            <form method="post" action="{{ url_for('admin_plot_add') }}">
+                <div class="row">
+                    <div class="fld"><label>地块名称</label><input name="plot_name" placeholder="如：东区一号田" required></div>
+                    <div class="fld"><label>面积（亩）</label><input name="area_mu" type="number" step="0.01" min="0" placeholder="0"></div>
+                    <div class="fld"><label>作物</label><input name="crop" list="cropOptions" placeholder="如：番茄">
+                        <datalist id="cropOptions">{% for c in crops %}<option value="{{ c }}">{% endfor %}</datalist>
+                    </div>
+                    <div class="fld"><label>土壤类型</label>
+                        <select name="soil">
+                            <option value="">— 请选择 —</option>
+                            {% for s in soils %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="fld"><label>种植日期</label><input name="sow_date" type="date" title="留空则物候按默认推算"></div>
+                    <div class="fld"><label>位置 / 片区</label><input name="location" placeholder="如：东区"></div>
+                    <div class="fld"><label>备注</label><input name="note" placeholder="选填"></div>
+                    <div class="fld"><button class="btn green" type="submit">添加地块</button></div>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>地块列表（共 {{ plots|length }} 块）</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:50px">ID</th>
+                        <th>地块名称</th>
+                        <th>面积(亩)</th>
+                        <th>作物</th>
+                        <th>土壤类型</th>
+                        <th style="width:190px">种植日期</th>
+                        <th>位置</th>
+                        <th>分配给农户</th>
+                        <th style="width:230px">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in plots %}
+                    <tr>
+                        <td>{{ p.id }}</td>
+                        <td>{{ p.plot_name }}</td>
+                        <td>{{ p.area_mu }}</td>
+                        <td>{{ p.crop or '—' }}</td>
+                        <td>{{ p.soil or '—' }}</td>
+                        <td>
+                            <form method="post" action="{{ url_for('admin_plot_set_sow') }}" style="display:inline-flex;gap:4px;align-items:center">
+                                <input type="hidden" name="pid" value="{{ p.id }}">
+                                <input type="date" name="sow_date" class="date-edit" value="{{ p.sow_date or '' }}">
+                                <button class="btn sm" type="submit" title="保存种植日期">保存</button>
+                            </form>
+                        </td>
+                        <td>{{ p.location or '—' }}</td>
+                        <td>
+                            {% if p.assigned_to %}<span class="badge yes">{{ p.assigned_to }}</span>
+                            {% else %}<span class="badge no">未分配</span>{% endif %}
+                        </td>
+                        <td>
+                            <form method="post" action="{{ url_for('admin_plot_assign') }}" style="display:inline-flex;gap:6px;align-items:center">
+                                <input type="hidden" name="pid" value="{{ p.id }}">
+                                <select name="farmer" class="assign-farmer">
+                                    <option value="">— 收回分配 —</option>
+                                    {% for f in farmers %}
+                                    <option value="{{ f }}" {% if f == p.assigned_to %}selected{% endif %}>{{ f }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn sm" type="submit">分配</button>
+                            </form>
+                            <form method="post" action="{{ url_for('admin_plot_delete') }}" style="display:inline">
+                                <input type="hidden" name="pid" value="{{ p.id }}">
+                                <button class="btn sm red" type="submit" onclick="return confirm('确认删除该地块？')">删除</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="9" class="empty">还没有地块，先在上方添加一块吧</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

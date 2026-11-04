@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>农作物农事智能服务平台 - 团队管理后台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, sans-serif;
+            color: #1f2937;
+            background: #f4f6f9;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+        .admin-wrap { padding: 26px 30px 40px; }
+        .admin-head { margin-bottom: 20px; }
+        .admin-head h1 { font-size: 20px; font-weight: 600; letter-spacing: .4px; }
+        .admin-head p { font-size: 13px; color: #94a3b8; margin-top: 7px; }
+        .admin-head .sub-title { font-size: 12.5px; color: #94a3b8; margin-top: 6px; letter-spacing: .5px; }
+
+        .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 24px; }
+        .stat {
+            background: #fff; border: 1px solid #e6ebf2; border-radius: 14px;
+            padding: 18px 20px; box-shadow: 0 1px 4px rgba(47, 85, 151, .06);
+        }
+        .stat b { font-size: 24px; color: #2F5597; }
+        .stat span { display: block; font-size: 12.5px; color: #7c8ba1; margin-top: 5px; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+        .card {
+            display: block; background: #fff; border: 1px solid #e6ebf2; border-radius: 14px;
+            padding: 22px 24px; text-decoration: none; color: inherit;
+            box-shadow: 0 1px 4px rgba(47, 85, 151, .06);
+            transition: transform .16s, box-shadow .16s, border-color .16s;
+        }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(47, 85, 151, .12); border-color: #d6e2f5; }
+        .card h3 { font-size: 15.5px; font-weight: 600; display: flex; align-items: center; gap: 9px; }
+        .card h3 .ic {
+            width: 32px; height: 32px; border-radius: 9px; flex: none;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: #eef3fb;
+        }
+        .card h3 .ic svg { width: 17px; height: 17px; stroke: #2F5597; }
+        .card p { font-size: 13px; color: #7c8ba1; line-height: 1.7; margin-top: 10px; }
+        .card .go { font-size: 12.5px; color: #2F5597; font-weight: 600; margin-top: 12px; display: inline-block; }
+        .sec-title { font-size: 15px; font-weight: 600; color: #2F5597; margin: 26px 0 13px; }
+    </style>
+</head>
+<body>
+    <!-- 与农户端一致：工作台不显示侧边栏，进入功能页面后才出现 -->
+
+    <div class="admin-wrap">
+        <div class="admin-head">
+            <h1>农作物农事智能服务平台</h1>
+            <p class="sub-title">团队管理后台</p>
+            <p>欢迎回来，<b>{{ username }}</b>（农场主管）　·　在这里统筹管理账号、地块与农户反馈</p>
+        </div>
+
+        <div class="stat-row">
+            <div class="stat"><b>{{ stats.users }}</b><span>注册账号总数</span></div>
+            <div class="stat"><b>{{ stats.farmers }}</b><span>农户账号数</span></div>
+            <div class="stat"><b>{{ stats.plots }}</b><span>地块总数</span></div>
+            <div class="stat"><b>{{ stats.assigned }}</b><span>已分配地块</span></div>
+            <div class="stat"><b>{{ stats.feedback }}</b><span>收到反馈条数</span></div>
+        </div>
+
+        <div class="sec-title">管理</div>
+
+        <div class="grid">
+            <a class="card" href="{{ url_for('admin_users') }}">
+                <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12.2a4.1 4.1 0 1 0 0-8.2 4.1 4.1 0 0 0 0 8.2z"/><path d="M4.2 20.2c0-3.4 3.5-5.2 7.8-5.2s7.8 1.8 7.8 5.2"/></svg></span>用户管理</h3>
+                <p>新增账号、删除账号、重置密码、调整用户角色（管理员 / 农户）。</p>
+                <span class="go">进入用户管理 &rsaquo;</span>
+            </a>
+
+            <a class="card" href="{{ url_for('admin_plots') }}">
+                <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7.4" height="7.4" rx="1.6"/><rect x="13.1" y="3.5" width="7.4" height="7.4" rx="1.6"/><rect x="3.5" y="13.1" width="7.4" height="7.4" rx="1.6"/><rect x="13.1" y="13.1" width="7.4" height="7.4" rx="1.6"/></svg></span>地块分配</h3>
+                <p>登记农场地块（名称 / 面积 / 作物 / 位置），把地块分配给农户或收回。</p>
+                <span class="go">进入地块分配 &rsaquo;</span>
+            </a>
+
+            <a class="card" href="{{ url_for('admin_feedback') }}">
+                <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5c0 4.1-4 7.5-9 7.5-1 0-2-.1-2.9-.4L4 20l1.3-3.1C3.9 15.6 3 13.7 3 11.5 3 7.4 7 4 12 4s9 3.4 9 7.5z"/></svg></span>反馈管理</h3>
+                <p>查看农户提交的意见反馈，逐条回复处理。</p>
+                <span class="go">进入反馈管理 &rsaquo;</span>
+            </a>
+
+        </div>
+
+        <div class="sec-title">决策处方</div>
+
+        <div class="grid">
+            <a class="card" href="{{ url_for('advisory_page', mode='pest') }}">
+                <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l7 2.6v5.3c0 4.3-2.9 7.6-7 9-4.1-1.4-7-4.7-7-9V6.2z"/><path d="M9.1 12.2l2 2 3.8-3.8"/></svg></span>病虫害防治建议</h3>
+                <p>症状识别 → 防治顺序 → 安全间隔期，按作物与生育期给方案</p>
+                <span class="go">进入 &rsaquo;</span>
+            </a>
+
+            <a class="card" href="{{ url_for('advisory_page', mode='fertilizer') }}">
+                <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.8c3.3 3.7 5.3 6.5 5.3 9a5.3 5.3 0 0 1-10.6 0c0-2.5 2-5.3 5.3-9z"/><path d="M9.6 14.6c0 1.6 1.1 2.7 2.7 2.7"/></svg></span>水肥调控处方</h3>
+                <p>按生育期给肥，分清基肥 / 追肥 / 叶面，结合地块土质调整</p>
+                <span class="go">进入 &rsaquo;</span>
+            </a>
+
+            <a class="card" href="{{ url_for('advisory_page', mode='farm') }}">
+                <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.2" y="3.8" width="15.6" height="16.4" rx="2.4"/><path d="M8 8.6h8M8 12.4h5"/><path d="M8.4 16.6l1.5 1.5 3-3"/></svg></span>农事管理方案</h3>
+                <p>全生育期时间轴 + 各阶段关键操作</p>
+                <span class="go">进入 &rsaquo;</span>
+            </a>
+
+            <a class="card" href="{{ url_for('advisory_page', mode='planning') }}">
+                <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.2h16"/><rect x="5.4" y="12.4" width="3.3" height="4.8" rx="1"/><rect x="10.3" y="8.6" width="3.3" height="8.6" rx="1"/><rect x="15.2" y="5.2" width="3.3" height="12" rx="1"/></svg></span>生产规划报告</h3>
+                <p>按产地条件推荐适种作物与茬口，含经济效益测算</p>
+                <span class="go">进入 &rsaquo;</span>
+            </a>
+        </div>
+
+        <div class="sec-title">知识图谱</div>
+
+        <div class="grid">
+            <a class="card" href="{{ url_for('kg_display') }}">
+                <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M3.5 9.2h17M9 9.2V19.5"/></svg></span>经典图谱</h3>
+                <p>按作物查看全部关系与结构化属性，支持搜索任意实体</p>
+                <span class="go">进入 &rsaquo;</span>
+            </a>
+        </div>
+    </div>
+</body>
+</html>
